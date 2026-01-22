@@ -18,21 +18,21 @@
         }
 
         :root {
-            --primary: #2c3e50;    /* Azul oscuro para seguridad */
-            --secondary: #34495e;  /* Gris azulado */
-            --danger: #e74c3c;     /* Rojo para peligro alto */
-            --warning: #f39c12;    /* Naranja para advertencia */
-            --safe: #27ae60;       /* Verde para seguro */
-            --info: #3498db;       /* Azul para información */
-            --light: #f5f5f5;      /* Gris claro */
-            --dark: #2c3e50;       /* Gris oscuro */
-            --high-risk: #e74c3c;  /* Rojo para riesgo alto */
-            --medium-risk: #f39c12;/* Naranja para riesgo medio */
-            --low-risk: #f1c40f;   /* Amarillo para riesgo bajo */
-            --critical-risk: #8e44ad; /* Púrpura para riesgo crítico */
-            --pending: #e74c3c;    /* Rojo para pendiente */
-            --in-progress: #3498db; /* Azul para en proceso */
-            --repaired: #27ae60;   /* Verde para reparado */
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --safe: #27ae60;
+            --info: #3498db;
+            --light: #f5f5f5;
+            --dark: #2c3e50;
+            --high-risk: #e74c3c;
+            --medium-risk: #f39c12;
+            --low-risk: #f1c40f;
+            --critical-risk: #8e44ad;
+            --pending: #e74c3c;
+            --in-progress: #3498db;
+            --repaired: #27ae60;
         }
 
         body {
@@ -1638,7 +1638,7 @@
 
     <script>
         // ==============================================
-        // CONFIGURACIÓN GLOBAL - VERSIÓN CONDICIONES INSEGURAS
+        // CONFIGURACIÓN GLOBAL - YA CONECTADO A TU SUPABASE
         // ==============================================
         let supabaseClient = null;
         let reports = [];
@@ -1651,15 +1651,17 @@
         let trendChart = null;
         let repairTimeChart = null;
         
-        // Credenciales Supabase
+        // TUS CREDENCIALES DE SUPABASE
         const MIS_CREDENCIALES = {
             URL: 'https://dvijgsezdxehnappichq.supabase.co',
             API_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2aWpnc2V6ZHhlaG5hcHBpY2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwOTI5MDAsImV4cCI6MjA4NDY2ODkwMH0.nb6mFkfmPJmIV1t--Uo4wK7BE84ZOTA0W8gF-5FUzD8'
         };
         
+        const BUCKET_NAME = 'evidencias-condiciones';
+        
         let CONFIG = {
-            supabaseUrl: '',
-            supabaseKey: '',
+            supabaseUrl: MIS_CREDENCIALES.URL,
+            supabaseKey: MIS_CREDENCIALES.API_KEY,
             lastSync: 'Nunca',
             offlineMode: true,
             initialized: false,
@@ -1760,12 +1762,11 @@
         }
         
         function generarCodigoOT() {
-            // Generar código con formato OT-YYYY-NNN
             const year = new Date().getFullYear();
             const numerosUsados = reports
-                .filter(r => r.OT && r.OT.match(/OT-\d{4}-\d{3}/))
+                .filter(r => r.ot && r.ot.match(/OT-\d{4}-\d{3}/))
                 .map(r => {
-                    const match = r.OT.match(/OT-\d{4}-(\d{3})/);
+                    const match = r.ot.match(/OT-\d{4}-(\d{3})/);
                     return match ? parseInt(match[1]) : 0;
                 })
                 .filter(n => !isNaN(n));
@@ -1779,7 +1780,6 @@
             const otCode = `OT-${year}-${String(siguienteNumero).padStart(3, '0')}`;
             document.getElementById('ot-code').value = otCode;
             
-            // Mostrar feedback
             const otField = document.getElementById('ot-code');
             otField.style.borderColor = '#27ae60';
             otField.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.2)';
@@ -1811,7 +1811,7 @@
         }
         
         function calcularDiasSinAccidentes() {
-            if (accidents.length === 0) return 365; // Un año si nunca ha habido accidentes
+            if (accidents.length === 0) return 365;
             
             const ultimoAccidente = accidents.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
             const hoy = new Date();
@@ -1823,12 +1823,12 @@
         }
         
         function calcularTiempoPromedioReparacion() {
-            const reparados = reports.filter(r => r.estado === 'Reparado' && r.fechaReparacion && r.fechaReporte);
+            const reparados = reports.filter(r => r.estado === 'Reparado' && r.fecha_reparacion && r.fecha_reporte);
             if (reparados.length === 0) return 0;
             
             const totalDias = reparados.reduce((sum, reporte) => {
-                const inicio = new Date(reporte.fechaReporte);
-                const fin = new Date(reporte.fechaReparacion);
+                const inicio = new Date(reporte.fecha_reporte);
+                const fin = new Date(reporte.fecha_reparacion);
                 const diferenciaMs = fin - inicio;
                 const dias = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
                 return sum + dias;
@@ -1842,9 +1842,9 @@
             if (reparados.length === 0) return 0;
             
             const cumplidos = reparados.filter(r => {
-                if (!r.fechaEstimadaReparacion || !r.fechaReparacion) return false;
-                const estimada = new Date(r.fechaEstimadaReparacion);
-                const real = new Date(r.fechaReparacion);
+                if (!r.fecha_estimada_reparacion || !r.fecha_reparacion) return false;
+                const estimada = new Date(r.fecha_estimada_reparacion);
+                const real = new Date(r.fecha_reparacion);
                 return real <= estimada;
             });
             
@@ -1871,23 +1871,115 @@
         }
         
         // ==============================================
+        // FUNCIONES PARA MANEJO DE IMÁGENES
+        // ==============================================
+        function previewImages(event) {
+            const preview = document.getElementById('image-preview');
+            preview.innerHTML = '';
+            
+            const files = event.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-preview-item';
+                    imgContainer.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <button class="remove-image" onclick="removerImagen(this)">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    preview.appendChild(imgContainer);
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function removerImagen(button) {
+            const container = button.parentElement;
+            container.remove();
+        }
+        
+        function tomarFoto() {
+            alert('📸 Función de tomar foto disponible en dispositivos móviles con cámara');
+            document.getElementById('photo-input').click();
+        }
+        
+        function abrirGaleria() {
+            document.getElementById('photo-input').click();
+        }
+        
+        async function subirFotoASupabase(file, ot, tipo = 'antes') {
+            try {
+                console.log(`📤 Subiendo foto para OT: ${ot}, Tipo: ${tipo}`);
+                
+                // Validar que tenemos conexión
+                if (!supabaseClient) {
+                    throw new Error('No hay conexión con Supabase');
+                }
+                
+                // Generar nombre único
+                const timestamp = Date.now();
+                const randomId = Math.random().toString(36).substring(2, 9);
+                const safeOT = ot.replace(/[^a-zA-Z0-9-_]/g, '_');
+                const extension = file.name.split('.').pop().toLowerCase();
+                const fileName = `${safeOT}_${tipo}_${timestamp}_${randomId}.${extension}`;
+                
+                // Subir el archivo
+                const { data, error } = await supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .upload(fileName, file, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
+                
+                if (error) {
+                    console.error('Error en upload:', error);
+                    throw error;
+                }
+                
+                console.log('✅ Archivo subido:', data);
+                
+                // Obtener URL pública
+                const { data: { publicUrl } } = supabaseClient.storage
+                    .from(BUCKET_NAME)
+                    .getPublicUrl(fileName);
+                
+                console.log('🔗 URL pública:', publicUrl);
+                
+                return {
+                    success: true,
+                    url: publicUrl,
+                    fileName: fileName
+                };
+                
+            } catch (error) {
+                console.error('❌ Error subiendo foto:', error);
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+        
+        // ==============================================
         // FUNCIONES DE NAVEGACIÓN
         // ==============================================
         function cambiarPagina(pagina) {
-            // Ocultar todas las páginas
             document.querySelectorAll('.page').forEach(p => {
                 p.style.display = 'none';
                 p.classList.remove('active');
             });
             
-            // Mostrar página seleccionada
             const pageElement = document.getElementById(`${pagina}-page`);
             if (pageElement) {
                 pageElement.style.display = 'block';
                 pageElement.classList.add('active');
             }
             
-            // Actualizar navegación activa
             document.querySelectorAll('.nav-menu a').forEach(a => {
                 a.classList.remove('active');
                 if (a.getAttribute('data-page') === pagina) {
@@ -1895,7 +1987,6 @@
                 }
             });
             
-            // Cargar datos según la página
             switch(pagina) {
                 case 'dashboard':
                     cargarDashboard();
@@ -1917,18 +2008,10 @@
         // ==============================================
         async function cargarDashboard() {
             try {
-                // Actualizar estadísticas
                 actualizarEstadisticasDashboard();
-                
-                // Actualizar días sin accidentes
                 actualizarDiasSinAccidentes();
-                
-                // Cargar actividades recientes
                 cargarActividadesRecientes();
-                
-                // Actualizar gráfico de evolución
                 actualizarGraficoEvolucion();
-                
             } catch (error) {
                 console.error('Error cargando dashboard:', error);
             }
@@ -1949,7 +2032,6 @@
             document.getElementById('avg-repair-time').textContent = `${tiempoPromedio}d`;
             document.getElementById('compliance-rate').textContent = `${cumplimiento}%`;
             
-            // Actualizar sidebar
             document.getElementById('sidebar-active-reports').textContent = total;
             document.getElementById('sidebar-pending-reports').textContent = pendientes;
             document.getElementById('sidebar-inprogress-reports').textContent = enProceso;
@@ -1972,23 +2054,21 @@
             const tbody = document.querySelector('#recent-activities-table tbody');
             if (!tbody) return;
             
-            // Ordenar por fecha más reciente
             const recientes = [...reports]
-                .sort((a, b) => new Date(b.fechaReporte) - new Date(a.fechaReporte))
+                .sort((a, b) => new Date(b.fecha_reporte) - new Date(a.fecha_reporte))
                 .slice(0, 10);
             
             tbody.innerHTML = '';
             
             recientes.forEach(reporte => {
-                // Calcular tiempo de proceso
                 let tiempoProceso = 'N/A';
-                if (reporte.estado === 'Reparado' && reporte.fechaReparacion) {
-                    const inicio = new Date(reporte.fechaReporte);
-                    const fin = new Date(reporte.fechaReparacion);
+                if (reporte.estado === 'Reparado' && reporte.fecha_reparacion) {
+                    const inicio = new Date(reporte.fecha_reporte);
+                    const fin = new Date(reporte.fecha_reparacion);
                     const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24));
                     tiempoProceso = `${dias} días`;
                 } else if (reporte.estado === 'En Proceso') {
-                    const inicio = new Date(reporte.fechaReporte);
+                    const inicio = new Date(reporte.fecha_reporte);
                     const hoy = new Date();
                     const dias = Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24));
                     tiempoProceso = `${dias} días (en curso)`;
@@ -1996,13 +2076,13 @@
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><span class="ot-code">${reporte.OT}</span></td>
+                    <td><span class="ot-code">${reporte.ot}</span></td>
                     <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${reporte.descripcion}">
                         ${reporte.descripcion.substring(0, 50)}${reporte.descripcion.length > 50 ? '...' : ''}
                     </td>
                     <td>${reporte.sector}</td>
-                    <td>${reporte.tipoRiesgo}</td>
-                    <td>${formatDate(reporte.fechaEstimadaReparacion)}</td>
+                    <td>${reporte.tipo_riesgo}</td>
+                    <td>${formatDate(reporte.fecha_estimada_reparacion)}</td>
                     <td>${tiempoProceso}</td>
                     <td><span class="status-badge ${obtenerEstadoClase(reporte.estado)}">${reporte.estado}</span></td>
                 `;
@@ -2025,7 +2105,6 @@
             if (periodo === '180d') dias = 180;
             if (periodo === '1y') dias = 365;
             
-            // Generar fechas para el período seleccionado
             const hoy = new Date();
             const fechas = [];
             const datosPendientes = [];
@@ -2037,15 +2116,14 @@
                 const fechaStr = fecha.toISOString().split('T')[0];
                 fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
                 
-                // Contar reportes por día
                 const pendientes = reports.filter(r => {
-                    const reporteFecha = new Date(r.fechaReporte);
+                    const reporteFecha = new Date(r.fecha_reporte);
                     return reporteFecha.toISOString().split('T')[0] === fechaStr && r.estado === 'Pendiente';
                 }).length;
                 
                 const reparados = reports.filter(r => {
                     if (r.estado !== 'Reparado') return false;
-                    const reparacionFecha = new Date(r.fechaReparacion);
+                    const reparacionFecha = new Date(r.fecha_reparacion);
                     return reparacionFecha.toISOString().split('T')[0] === fechaStr;
                 }).length;
                 
@@ -2125,105 +2203,63 @@
             showLoading(true, 'Guardando reporte...');
             
             try {
-                // Crear objeto de reporte
+                // 1. Datos básicos
                 const nuevoReporte = {
-                    OT: document.getElementById('ot-code').value,
-                    reportadoPor: document.getElementById('reported-by').value,
-                    fechaReporte: document.getElementById('report-date').value || obtenerTimestamp(),
+                    ot: document.getElementById('ot-code').value,
+                    reportado_por: document.getElementById('reported-by').value,
                     descripcion: document.getElementById('problem-description').value,
                     sector: document.getElementById('sector').value,
-                    ubicacionEspecifica: document.getElementById('specific-location').value,
-                    tipoRiesgo: document.getElementById('risk-type').value,
-                    nivelRiesgo: document.getElementById('risk-level').value,
-                    fechaEstimadaReparacion: document.getElementById('estimated-repair-date').value,
+                    ubicacion_especifica: document.getElementById('specific-location').value,
+                    tipo_riesgo: document.getElementById('risk-type').value,
+                    nivel_riesgo: document.getElementById('risk-level').value,
+                    fecha_estimada_reparacion: document.getElementById('estimated-repair-date').value,
                     prioridad: document.getElementById('priority').value,
                     observaciones: document.getElementById('additional-observations').value,
-                    estado: 'Pendiente',
-                    fotosAntes: [], // Aquí se guardarían las URLs de las fotos
-                    fotosDespues: [],
-                    fechaCreacion: obtenerTimestamp()
+                    estado: 'Pendiente'
                 };
                 
-                // Guardar en Supabase
-                if (supabaseClient) {
-                    const { error } = await supabaseClient
-                        .from('condiciones_inseguras')
-                        .upsert([nuevoReporte], { onConflict: 'OT' });
+                // 2. Guardar en Supabase
+                const { data, error } = await supabaseClient
+                    .from('condiciones_inseguras')
+                    .upsert([nuevoReporte], { onConflict: 'ot' });
+                
+                if (error) throw error;
+                
+                // 3. Subir fotos si hay
+                const imagePreviews = document.querySelectorAll('#image-preview .image-preview-item img');
+                const fotosUrls = [];
+                
+                for (const img of imagePreviews) {
+                    const blob = await (await fetch(img.src)).blob();
+                    const file = new File([blob], `foto_${Date.now()}.jpg`, { type: 'image/jpeg' });
                     
-                    if (error) throw error;
-                } else {
-                    // Guardar localmente si no hay conexión
-                    guardarLocalmenteReporte(nuevoReporte);
+                    const result = await subirFotoASupabase(file, nuevoReporte.ot, 'antes');
+                    if (result.success) {
+                        fotosUrls.push(result.url);
+                    }
                 }
                 
-                // Actualizar datos locales
-                const reporteExistente = reports.find(r => r.OT === nuevoReporte.OT);
-                if (reporteExistente) {
-                    const index = reports.findIndex(r => r.OT === nuevoReporte.OT);
-                    reports[index] = nuevoReporte;
-                } else {
-                    reports.push(nuevoReporte);
+                // 4. Actualizar con URLs de fotos
+                if (fotosUrls.length > 0) {
+                    await supabaseClient
+                        .from('condiciones_inseguras')
+                        .update({ fotos_antes: fotosUrls })
+                        .eq('ot', nuevoReporte.ot);
                 }
                 
-                // Guardar localmente
-                guardarDatosLocales();
+                alert(`✅ Reporte ${nuevoReporte.ot} guardado!`);
                 
-                // Mostrar éxito
-                alert('✅ Reporte guardado exitosamente!');
-                
-                // Limpiar formulario
-                document.getElementById('report-form').reset();
+                // 5. Limpiar y volver
+                event.target.reset();
                 document.getElementById('image-preview').innerHTML = '';
-                
-                // Volver al dashboard
                 cambiarPagina('dashboard');
                 
             } catch (error) {
-                console.error('Error guardando reporte:', error);
-                alert('❌ Error al guardar el reporte. Verifica la conexión y los datos.');
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message);
             } finally {
                 showLoading(false);
             }
-        }
-        
-        function previewImages(event) {
-            const preview = document.getElementById('image-preview');
-            preview.innerHTML = '';
-            
-            const files = event.target.files;
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const imgContainer = document.createElement('div');
-                    imgContainer.className = 'image-preview-item';
-                    imgContainer.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview">
-                        <button class="remove-image" onclick="removerImagen(this)">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    `;
-                    preview.appendChild(imgContainer);
-                };
-                
-                reader.readAsDataURL(file);
-            }
-        }
-        
-        function removerImagen(button) {
-            const container = button.parentElement;
-            container.remove();
-        }
-        
-        function tomarFoto() {
-            // Esta función necesitaría permisos de cámara y un backend para subir la foto
-            alert('📸 Función de tomar foto disponible en dispositivos móviles con cámara');
-            document.getElementById('photo-input').click();
-        }
-        
-        function abrirGaleria() {
-            document.getElementById('photo-input').click();
         }
         
         // ==============================================
@@ -2235,7 +2271,6 @@
             
             tbody.innerHTML = '';
             
-            // Filtrar reportes
             let reportesFiltrados = [...reports];
             
             const filterSector = document.getElementById('filter-sector').value;
@@ -2245,19 +2280,18 @@
             
             const filterRisk = document.getElementById('filter-risk-level').value;
             if (filterRisk) {
-                reportesFiltrados = reportesFiltrados.filter(r => r.nivelRiesgo === filterRisk);
+                reportesFiltrados = reportesFiltrados.filter(r => r.nivel_riesgo === filterRisk);
             }
             
             const searchTerm = document.getElementById('search-reports').value.toLowerCase();
             if (searchTerm) {
                 reportesFiltrados = reportesFiltrados.filter(r => 
-                    (r.OT && r.OT.toLowerCase().includes(searchTerm)) ||
+                    (r.ot && r.ot.toLowerCase().includes(searchTerm)) ||
                     (r.descripcion && r.descripcion.toLowerCase().includes(searchTerm)) ||
-                    (r.reportadoPor && r.reportadoPor.toLowerCase().includes(searchTerm))
+                    (r.reportado_por && r.reportado_por.toLowerCase().includes(searchTerm))
                 );
             }
             
-            // Aplicar filtro de estado desde botones
             if (currentFilter === 'pending') {
                 reportesFiltrados = reportesFiltrados.filter(r => r.estado === 'Pendiente');
             } else if (currentFilter === 'inprogress') {
@@ -2266,52 +2300,49 @@
                 reportesFiltrados = reportesFiltrados.filter(r => r.estado === 'Reparado');
             }
             
-            // Ordenar por fecha más reciente
-            reportesFiltrados.sort((a, b) => new Date(b.fechaReporte) - new Date(a.fechaReporte));
+            reportesFiltrados.sort((a, b) => new Date(b.fecha_reporte) - new Date(a.fecha_reporte));
             
-            // Mostrar en tabla
             reportesFiltrados.forEach(reporte => {
-                // Calcular tiempo de reparación
                 let tiempoReparacion = 'N/A';
-                if (reporte.estado === 'Reparado' && reporte.fechaReparacion) {
-                    const inicio = new Date(reporte.fechaReporte);
-                    const fin = new Date(reporte.fechaReparacion);
+                if (reporte.estado === 'Reparado' && reporte.fecha_reparacion) {
+                    const inicio = new Date(reporte.fecha_reporte);
+                    const fin = new Date(reporte.fecha_reparacion);
                     const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24));
                     tiempoReparacion = `${dias} días`;
                 }
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><span class="ot-code">${reporte.OT}</span></td>
+                    <td><span class="ot-code">${reporte.ot}</span></td>
                     <td style="max-width: 150px;" title="${reporte.descripcion}">
                         ${reporte.descripcion.substring(0, 50)}${reporte.descripcion.length > 50 ? '...' : ''}
                     </td>
                     <td>${reporte.sector}</td>
-                    <td><span class="risk-badge ${obtenerRiesgoClase(reporte.nivelRiesgo)}">${reporte.nivelRiesgo}</span></td>
+                    <td><span class="risk-badge ${obtenerRiesgoClase(reporte.nivel_riesgo)}">${reporte.nivel_riesgo}</span></td>
                     <td>
-                        ${reporte.fotosAntes && reporte.fotosAntes.length > 0 ? 
-                            `<i class="fas fa-camera" style="color: #3498db;"></i> ${reporte.fotosAntes.length} foto(s)` : 
+                        ${reporte.fotos_antes && reporte.fotos_antes.length > 0 ? 
+                            `<i class="fas fa-camera" style="color: #3498db;"></i> ${reporte.fotos_antes.length} foto(s)` : 
                             '<i class="fas fa-times" style="color: #95a5a6;"></i> Sin foto'}
                     </td>
                     <td>
-                        ${reporte.fotosDespues && reporte.fotosDespues.length > 0 ? 
-                            `<i class="fas fa-camera" style="color: #27ae60;"></i> ${reporte.fotosDespues.length} foto(s)` : 
+                        ${reporte.fotos_despues && reporte.fotos_despues.length > 0 ? 
+                            `<i class="fas fa-camera" style="color: #27ae60;"></i> ${reporte.fotos_despues.length} foto(s)` : 
                             '<i class="fas fa-times" style="color: #95a5a6;"></i> Sin foto'}
                     </td>
-                    <td>${formatDate(reporte.fechaReporte)}</td>
+                    <td>${formatDate(reporte.fecha_reporte)}</td>
                     <td>${tiempoReparacion}</td>
                     <td><span class="status-badge ${obtenerEstadoClase(reporte.estado)}">${reporte.estado}</span></td>
                     <td>
                         <div class="actions">
-                            <button class="action-btn btn-info" onclick="verDetalleReporte('${reporte.OT}')" title="Ver Detalle">
+                            <button class="action-btn btn-info" onclick="verDetalleReporte('${reporte.ot}')" title="Ver Detalle">
                                 <i class="fas fa-eye"></i>
                             </button>
                             ${reporte.estado === 'Pendiente' ? 
-                                `<button class="action-btn btn-primary" onclick="cambiarEstado('${reporte.OT}', 'En Proceso')" title="Iniciar Proceso">
+                                `<button class="action-btn btn-primary" onclick="cambiarEstado('${reporte.ot}', 'En Proceso')" title="Iniciar Proceso">
                                     <i class="fas fa-play"></i>
                                 </button>` : ''}
                             ${reporte.estado === 'En Proceso' ? 
-                                `<button class="action-btn btn-success" onclick="marcarComoReparado('${reporte.OT}')" title="Marcar como Reparado">
+                                `<button class="action-btn btn-success" onclick="marcarComoReparado('${reporte.ot}')" title="Marcar como Reparado">
                                     <i class="fas fa-check"></i>
                                 </button>` : ''}
                         </div>
@@ -2321,15 +2352,42 @@
             });
         }
         
-        function cambiarEstado(ot, nuevoEstado) {
-            const reporte = reports.find(r => r.OT === ot);
+        async function cambiarEstado(ot, nuevoEstado) {
+            const reporte = reports.find(r => r.ot === ot);
             if (!reporte) return;
             
             reporte.estado = nuevoEstado;
             
             if (nuevoEstado === 'En Proceso') {
-                reporte.fechaInicioProceso = obtenerTimestamp();
+                reporte.fecha_inicio_proceso = obtenerTimestamp();
             }
+            
+            // Actualizar en Supabase
+            const { error } = await supabaseClient
+                .from('condiciones_inseguras')
+                .update({ 
+                    estado: nuevoEstado,
+                    fecha_inicio_proceso: nuevoEstado === 'En Proceso' ? obtenerTimestamp() : null
+                })
+                .eq('ot', ot);
+            
+            if (error) {
+                console.error('Error actualizando estado:', error);
+                return;
+            }
+            
+            // Crear movimiento
+            const movimiento = {
+                ot: ot,
+                tipo_movimiento: nuevoEstado === 'En Proceso' ? 'En Proceso' : 'Reasignado',
+                responsable: 'Sistema',
+                observaciones: `Estado cambiado a ${nuevoEstado}`,
+                fecha_movimiento: obtenerTimestamp()
+            };
+            
+            await supabaseClient
+                .from('movimientos_condiciones')
+                .insert([movimiento]);
             
             guardarDatosLocales();
             cargarHistorial();
@@ -2338,8 +2396,7 @@
             alert(`✅ Reporte ${ot} cambiado a ${nuevoEstado}`);
         }
         
-        function marcarComoReparado(ot) {
-            // Aquí se abriría un modal para ingresar quién reparó y subir fotos
+        async function marcarComoReparado(ot) {
             const modalContent = document.getElementById('modal-content');
             modalContent.innerHTML = `
                 <h3 style="margin-bottom: 20px;"><i class="fas fa-check-circle"></i> Marcar como Reparado</h3>
@@ -2350,15 +2407,6 @@
                 <div class="form-group">
                     <label>Fecha de Reparación</label>
                     <input type="datetime-local" id="fecha-reparacion" class="form-control" value="${new Date().toISOString().slice(0, 16)}">
-                </div>
-                <div class="form-group">
-                    <label>Evidencia Fotográfica (Después)</label>
-                    <div class="image-upload" onclick="document.getElementById('foto-despues-input').click()">
-                        <i class="fas fa-camera"></i>
-                        <p>Subir fotos de la reparación</p>
-                    </div>
-                    <input type="file" id="foto-despues-input" accept="image/*" multiple style="display: none;">
-                    <div class="image-preview" id="foto-despues-preview"></div>
                 </div>
                 <div class="form-group">
                     <label>Observaciones de la Reparación</label>
@@ -2375,53 +2423,70 @@
             `;
             
             document.getElementById('conditionModal').style.display = 'flex';
-            
-            // Configurar preview para fotos después
-            document.getElementById('foto-despues-input').onchange = function(e) {
-                const preview = document.getElementById('foto-despues-preview');
-                preview.innerHTML = '';
-                
-                const files = e.target.files;
-                for (let i = 0; i < files.length; i++) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const imgContainer = document.createElement('div');
-                        imgContainer.className = 'image-preview-item';
-                        imgContainer.innerHTML = `
-                            <img src="${e.target.result}" alt="Preview">
-                            <button class="remove-image" onclick="removerImagen(this)">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        `;
-                        preview.appendChild(imgContainer);
-                    };
-                    reader.readAsDataURL(files[i]);
-                }
-            };
         }
         
-        function confirmarReparacion(ot) {
-            const reporte = reports.find(r => r.OT === ot);
-            if (!reporte) return;
-            
+        async function confirmarReparacion(ot) {
             const reparadoPor = document.getElementById('reparado-por').value;
             if (!reparadoPor) {
                 alert('❌ Por favor ingresa el nombre de quien realizó la reparación');
                 return;
             }
             
-            reporte.estado = 'Reparado';
-            reporte.reparadoPor = reparadoPor;
-            reporte.fechaReparacion = document.getElementById('fecha-reparacion').value || obtenerTimestamp();
-            reporte.observacionesReparacion = document.getElementById('obs-reparacion').value;
-            // Aquí se guardarían las fotos "después" en reporte.fotosDespues
+            showLoading(true, 'Completando reparación...');
             
-            guardarDatosLocales();
-            cerrarModal();
-            cargarHistorial();
-            actualizarEstadisticasDashboard();
-            
-            alert(`✅ Reporte ${ot} marcado como reparado por ${reparadoPor}`);
+            try {
+                const reporte = reports.find(r => r.ot === ot);
+                
+                // Actualizar en Supabase
+                const { error: errorReporte } = await supabaseClient
+                    .from('condiciones_inseguras')
+                    .update({
+                        estado: 'Reparado',
+                        reparado_por: reparadoPor,
+                        fecha_reparacion: document.getElementById('fecha-reparacion').value || obtenerTimestamp(),
+                        observaciones_reparacion: document.getElementById('obs-reparacion').value
+                    })
+                    .eq('ot', ot);
+                
+                if (errorReporte) throw errorReporte;
+                
+                // Crear movimiento
+                const movimientoReparacion = {
+                    ot: ot,
+                    tipo_movimiento: 'Reparado',
+                    responsable: reparadoPor,
+                    observaciones: `Reparación completada por ${reparadoPor}`,
+                    fecha_movimiento: obtenerTimestamp()
+                };
+                
+                const { error: errorMovimiento } = await supabaseClient
+                    .from('movimientos_condiciones')
+                    .insert([movimientoReparacion]);
+                
+                if (errorMovimiento) throw errorMovimiento;
+                
+                // Actualizar localmente
+                if (reporte) {
+                    reporte.estado = 'Reparado';
+                    reporte.reparado_por = reparadoPor;
+                    reporte.fecha_reparacion = movimientoReparacion.fecha_movimiento;
+                }
+                
+                movements.push(movimientoReparacion);
+                guardarDatosLocales();
+                
+                cerrarModal();
+                alert(`✅ Reporte ${ot} marcado como reparado por ${reparadoPor}`);
+                
+                cargarHistorial();
+                actualizarEstadisticasDashboard();
+                
+            } catch (error) {
+                console.error('Error completando reparación:', error);
+                alert('❌ Error al completar la reparación');
+            } finally {
+                showLoading(false);
+            }
         }
         
         function cerrarModal() {
@@ -2429,9 +2494,7 @@
         }
         
         function exportarExcel() {
-            // Esta función generaría un archivo Excel con los datos
             alert('📊 Exportando datos a Excel...');
-            // Implementación real necesitaría una librería como SheetJS
         }
         
         // ==============================================
@@ -2447,8 +2510,8 @@
         }
         
         function actualizarKPIsAnalisis() {
-            const riesgosCriticos = reports.filter(r => r.nivelRiesgo === 'Crítico').length;
-            const riesgosAltos = reports.filter(r => r.nivelRiesgo === 'Alto').length;
+            const riesgosCriticos = reports.filter(r => r.nivel_riesgo === 'Crítico').length;
+            const riesgosAltos = reports.filter(r => r.nivel_riesgo === 'Alto').length;
             const tiempoPromedio = calcularTiempoPromedioReparacion();
             const cumplimiento = calcularTasaCumplimiento();
             
@@ -2466,7 +2529,6 @@
                 sectorChart.destroy();
             }
             
-            // Agrupar por sector
             const sectores = {};
             reports.forEach(reporte => {
                 if (!sectores[reporte.sector]) {
@@ -2531,10 +2593,9 @@
                 riskLevelChart.destroy();
             }
             
-            // Agrupar por nivel de riesgo
             const niveles = ['Crítico', 'Alto', 'Medio', 'Bajo'];
             const data = niveles.map(nivel => 
-                reports.filter(r => r.nivelRiesgo === nivel).length
+                reports.filter(r => r.nivel_riesgo === nivel).length
             );
             
             riskLevelChart = new Chart(ctx, {
@@ -2575,7 +2636,6 @@
                 trendChart.destroy();
             }
             
-            // Últimos 12 meses
             const meses = [];
             const datos = [];
             const hoy = new Date();
@@ -2586,7 +2646,7 @@
                 meses.push(mesStr);
                 
                 const reportesMes = reports.filter(r => {
-                    const fechaReporte = new Date(r.fechaReporte);
+                    const fechaReporte = new Date(r.fecha_reporte);
                     return fechaReporte.getFullYear() === fecha.getFullYear() && 
                            fechaReporte.getMonth() === fecha.getMonth();
                 });
@@ -2649,14 +2709,13 @@
                 repairTimeChart.destroy();
             }
             
-            // Distribución de tiempos de reparación
             const tiempos = ['< 1 día', '1-3 días', '4-7 días', '1-2 semanas', '> 2 semanas'];
-            const reparados = reports.filter(r => r.estado === 'Reparado' && r.fechaReparacion && r.fechaReporte);
+            const reparados = reports.filter(r => r.estado === 'Reparado' && r.fecha_reparacion && r.fecha_reporte);
             
             const data = tiempos.map(rango => {
                 const reparadosRango = reparados.filter(r => {
-                    const inicio = new Date(r.fechaReporte);
-                    const fin = new Date(r.fechaReparacion);
+                    const inicio = new Date(r.fecha_reporte);
+                    const fin = new Date(r.fecha_reparacion);
                     const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24));
                     
                     if (rango === '< 1 día') return dias < 1;
@@ -2719,7 +2778,6 @@
             
             tbody.innerHTML = '';
             
-            // Agrupar por sector
             const sectores = {};
             reports.forEach(reporte => {
                 if (!sectores[reporte.sector]) {
@@ -2737,16 +2795,15 @@
                 if (reporte.estado === 'En Proceso') sectores[reporte.sector].enProceso++;
                 if (reporte.estado === 'Reparado') {
                     sectores[reporte.sector].reparados++;
-                    if (reporte.fechaReparacion && reporte.fechaReporte) {
-                        const inicio = new Date(reporte.fechaReporte);
-                        const fin = new Date(reporte.fechaReparacion);
+                    if (reporte.fecha_reparacion && reporte.fecha_reporte) {
+                        const inicio = new Date(reporte.fecha_reporte);
+                        const fin = new Date(reporte.fecha_reparacion);
                         const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24));
                         sectores[reporte.sector].tiempos.push(dias);
                     }
                 }
             });
             
-            // Convertir a array y ordenar por total
             const sectoresArray = Object.entries(sectores).map(([nombre, datos]) => ({
                 nombre,
                 ...datos,
@@ -2756,7 +2813,6 @@
             
             sectoresArray.sort((a, b) => b.total - a.total);
             
-            // Mostrar top 10
             sectoresArray.slice(0, 10).forEach((sector, index) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -2774,27 +2830,23 @@
         
         function generarReportePDF() {
             alert('📄 Generando reporte PDF completo...');
-            // Implementación real necesitaría una librería como jsPDF
         }
         
         // ==============================================
         // FUNCIONES DE CONFIGURACIÓN
         // ==============================================
         function cargarConfiguracion() {
-            // Actualizar estadísticas
             const total = reports.length;
             const pendientes = reports.filter(r => r.estado === 'Pendiente').length;
             const diasSinAccidentes = calcularDiasSinAccidentes();
             
-            // Contar reportantes únicos
-            const reportantes = new Set(reports.map(r => r.reportadoPor));
+            const reportantes = new Set(reports.map(r => r.reportado_por));
             
             document.getElementById('total-reports-config').textContent = total;
             document.getElementById('pending-reports-config').textContent = pendientes;
             document.getElementById('active-reporters').textContent = reportantes.size;
             document.getElementById('accident-free-config').textContent = diasSinAccidentes;
             
-            // Cargar configuraciones de notificaciones
             document.getElementById('notify-new').checked = CONFIG.notifications.new;
             document.getElementById('notify-overdue').checked = CONFIG.notifications.overdue;
             document.getElementById('notify-critical').checked = CONFIG.notifications.critical;
@@ -2810,52 +2862,48 @@
         }
         
         function simularDatos() {
-            // Generar datos de ejemplo para pruebas
             const sectores = ['Producción', 'Almacén', 'Mantenimiento', 'Logística', 'Oficinas'];
             const riesgos = ['Mecánico', 'Eléctrico', 'Químico', 'Ergonómico'];
             const niveles = ['Crítico', 'Alto', 'Medio', 'Bajo'];
             const estados = ['Pendiente', 'En Proceso', 'Reparado'];
             const nombres = ['Juan Pérez', 'María García', 'Carlos López', 'Ana Martínez', 'Pedro Rodríguez'];
             
-            for (let i = 1; i <= 20; i++) {
+            for (let i = 1; i <= 10; i++) {
                 const fechaReporte = new Date();
                 fechaReporte.setDate(fechaReporte.getDate() - Math.floor(Math.random() * 30));
                 
                 const reporte = {
-                    OT: `OT-2024-${String(i).padStart(3, '0')}`,
-                    reportadoPor: nombres[Math.floor(Math.random() * nombres.length)],
-                    fechaReporte: fechaReporte.toISOString(),
+                    ot: `OT-2024-${String(i).padStart(3, '0')}`,
+                    reportado_por: nombres[Math.floor(Math.random() * nombres.length)],
+                    fecha_reporte: fechaReporte.toISOString(),
                     descripcion: `Condición insegura ${i}: ${['Cable expuesto', 'Piso resbaladizo', 'Protección faltante', 'Equipo defectuoso'][Math.floor(Math.random() * 4)]}`,
                     sector: sectores[Math.floor(Math.random() * sectores.length)],
-                    ubicacionEspecifica: `Área ${Math.floor(Math.random() * 10) + 1}`,
-                    tipoRiesgo: riesgos[Math.floor(Math.random() * riesgos.length)],
-                    nivelRiesgo: niveles[Math.floor(Math.random() * niveles.length)],
-                    fechaEstimadaReparacion: new Date(fechaReporte.getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+                    ubicacion_especifica: `Área ${Math.floor(Math.random() * 10) + 1}`,
+                    tipo_riesgo: riesgos[Math.floor(Math.random() * riesgos.length)],
+                    nivel_riesgo: niveles[Math.floor(Math.random() * niveles.length)],
+                    fecha_estimada_reparacion: new Date(fechaReporte.getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
                     prioridad: ['Alta', 'Media', 'Baja'][Math.floor(Math.random() * 3)],
                     observaciones: 'Observaciones de ejemplo',
                     estado: estados[Math.floor(Math.random() * estados.length)],
-                    fechaCreacion: fechaReporte.toISOString()
+                    fecha_creacion: fechaReporte.toISOString()
                 };
                 
-                // Si está reparado, agregar fecha de reparación
                 if (reporte.estado === 'Reparado') {
                     const fechaReparacion = new Date(fechaReporte);
                     fechaReparacion.setDate(fechaReparacion.getDate() + Math.floor(Math.random() * 10) + 1);
-                    reporte.fechaReparacion = fechaReparacion.toISOString();
-                    reporte.reparadoPor = 'Técnico ' + ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
+                    reporte.fecha_reparacion = fechaReparacion.toISOString();
+                    reporte.reparado_por = 'Técnico ' + ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
                 }
                 
-                // Si está en proceso, agregar fecha de inicio
                 if (reporte.estado === 'En Proceso') {
                     const fechaInicio = new Date(fechaReporte);
                     fechaInicio.setDate(fechaInicio.getDate() + 1);
-                    reporte.fechaInicioProceso = fechaInicio.toISOString();
+                    reporte.fecha_inicio_proceso = fechaInicio.toISOString();
                 }
                 
                 reports.push(reporte);
             }
             
-            // Simular algunos accidentes
             const accidenteFecha = new Date();
             accidenteFecha.setDate(accidenteFecha.getDate() - 45);
             accidents.push({
@@ -2866,7 +2914,7 @@
             });
             
             guardarDatosLocales();
-            alert('✅ Datos simulados generados. Recarga la página para ver los cambios.');
+            alert('✅ 10 reportes simulados generados. Recarga la página para ver los cambios.');
         }
         
         // ==============================================
@@ -2877,10 +2925,8 @@
             
             setTimeout(() => {
                 if (supabaseClient) {
-                    // Sincronizar con Supabase
                     sincronizarDatos();
                 } else {
-                    // Recargar datos locales
                     actualizarEstadisticasDashboard();
                     
                     if (document.getElementById('dashboard-page').classList.contains('active')) {
@@ -2937,7 +2983,6 @@
         
         function cargarDatosLocales() {
             try {
-                // Cargar reportes
                 const datosGuardados = localStorage.getItem('condiciones_inseguras');
                 if (datosGuardados) {
                     const datos = JSON.parse(datosGuardados);
@@ -2950,7 +2995,6 @@
                     accidents = [];
                 }
                 
-                // Cargar configuraciones de notificaciones
                 const notificacionesGuardadas = localStorage.getItem('notifications_config');
                 if (notificacionesGuardadas) {
                     CONFIG.notifications = JSON.parse(notificacionesGuardadas);
@@ -2962,12 +3006,6 @@
                 movements = [];
                 accidents = [];
             }
-        }
-        
-        function guardarLocalmenteReporte(reporte) {
-            reports.push(reporte);
-            guardarDatosLocales();
-            console.log('Reporte guardado localmente:', reporte.OT);
         }
         
         // ==============================================
@@ -2982,11 +3020,49 @@
             showLoading(true, 'Sincronizando con Supabase...');
             
             try {
-                // Aquí iría la lógica de sincronización con Supabase
-                console.log('✅ Datos sincronizados con Supabase');
+                // Descargar datos de Supabase
+                const { data: remoteReports, error: reportsError } = await supabaseClient
+                    .from('condiciones_inseguras')
+                    .select('*')
+                    .order('fecha_reporte', { ascending: false });
+                
+                if (reportsError) throw reportsError;
+                
+                const { data: remoteMovements, error: movementsError } = await supabaseClient
+                    .from('movimientos_condiciones')
+                    .select('*')
+                    .order('fecha_movimiento', { ascending: false });
+                
+                if (movementsError && !movementsError.message.includes('does not exist')) {
+                    console.error('Error descargando movimientos:', movementsError);
+                }
+                
+                const { data: remoteAccidents, error: accidentsError } = await supabaseClient
+                    .from('accidentes')
+                    .select('*')
+                    .order('fecha', { ascending: false });
+                
+                if (accidentsError && !accidentsError.message.includes('does not exist')) {
+                    console.error('Error descargando accidentes:', accidentsError);
+                }
+                
+                // Actualizar datos locales
+                if (remoteReports) reports = remoteReports;
+                if (remoteMovements) movements = remoteMovements;
+                if (remoteAccidents) accidents = remoteAccidents;
+                
+                guardarDatosLocales();
                 
                 CONFIG.lastSync = new Date().toLocaleString('es-ES');
                 localStorage.setItem('last_sync', CONFIG.lastSync);
+                
+                console.log(`✅ Sincronización completada: ${reports.length} reportes`);
+                
+                actualizarEstadisticasDashboard();
+                
+                if (document.getElementById('dashboard-page').classList.contains('active')) {
+                    cargarDashboard();
+                }
                 
                 mostrarNotificacion('✅ Sincronización completada', 'success');
                 
@@ -3009,65 +3085,52 @@
             showLoading(true, 'Iniciando sistema...');
             
             try {
-                // 1. Usar credenciales proporcionadas
-                CONFIG.supabaseUrl = MIS_CREDENCIALES.URL;
-                CONFIG.supabaseKey = MIS_CREDENCIALES.API_KEY;
-                
-                // 2. Intentar conectar con Supabase
-                if (CONFIG.supabaseUrl && CONFIG.supabaseKey) {
-                    console.log('🔗 Intentando conectar con Supabase...');
-                    
-                    try {
-                        supabaseClient = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, {
-                            auth: {
-                                persistSession: false
-                            }
-                        });
-                        
-                        // Probar conexión
-                        const { data, error } = await supabaseClient
-                            .from('condiciones_inseguras')
-                            .select('count', { count: 'exact', head: true })
-                            .limit(1);
-                        
-                        if (error && error.message.includes('does not exist')) {
-                            console.log('📋 Tabla no existe, pero conexión OK');
-                            updateStatusIndicator('connected', 'Conectado a Supabase');
-                            CONFIG.offlineMode = false;
-                        } else if (error) {
-                            throw error;
-                        } else {
-                            console.log('✅ Conexión exitosa con Supabase');
-                            updateStatusIndicator('connected', 'Conectado a Supabase');
-                            CONFIG.offlineMode = false;
+                // 1. Crear cliente Supabase con TUS CREDENCIALES
+                supabaseClient = supabase.createClient(
+                    MIS_CREDENCIALES.URL,
+                    MIS_CREDENCIALES.API_KEY,
+                    {
+                        auth: {
+                            persistSession: false
                         }
-                        
-                        // Guardar credenciales
-                        localStorage.setItem('supabase_url', CONFIG.supabaseUrl);
-                        localStorage.setItem('supabase_key', CONFIG.supabaseKey);
-                        
-                        // Sincronizar datos
-                        await sincronizarDatos();
-                        
-                    } catch (connectionError) {
-                        console.error('❌ Error de conexión:', connectionError);
-                        updateStatusIndicator('error', 'Error de conexión');
-                        CONFIG.offlineMode = true;
+                    }
+                );
+                
+                console.log('🔗 Cliente Supabase creado');
+                
+                // 2. Probar conexión
+                const { data, error } = await supabaseClient
+                    .from('condiciones_inseguras')
+                    .select('count', { count: 'exact', head: true })
+                    .limit(1);
+                
+                if (error) {
+                    if (error.message.includes('does not exist')) {
+                        console.log('📋 Tabla no existe, pero conexión OK');
+                        updateStatusIndicator('connected', 'Conectado a Supabase');
+                        CONFIG.offlineMode = false;
+                    } else {
+                        throw error;
                     }
                 } else {
-                    console.log('📴 Modo offline - Sin credenciales');
-                    updateStatusIndicator('disconnected', 'Modo Offline');
-                    CONFIG.offlineMode = true;
+                    console.log('✅ Conexión exitosa con Supabase');
+                    updateStatusIndicator('connected', 'Conectado a Supabase');
+                    CONFIG.offlineMode = false;
                 }
                 
-                // 3. Cargar datos locales siempre
+                // 3. Cargar datos locales primero
                 cargarDatosLocales();
                 console.log(`📊 Datos locales cargados: ${reports.length} reportes`);
                 
-                // 4. Configurar interfaz
+                // 4. Sincronizar con Supabase
+                if (!CONFIG.offlineMode) {
+                    await sincronizarDatos();
+                }
+                
+                // 5. Configurar interfaz
                 configurarInterfaz();
                 
-                // 5. Mostrar dashboard
+                // 6. Mostrar dashboard
                 cambiarPagina('dashboard');
                 
                 CONFIG.initialized = true;
@@ -3075,8 +3138,14 @@
                 
             } catch (error) {
                 console.error('❌ Error crítico en inicialización:', error);
-                updateStatusIndicator('error', 'Error de inicialización');
-                alert('Error inicializando la aplicación. Revisa la consola (F12) para más detalles.');
+                updateStatusIndicator('error', 'Error de conexión');
+                
+                // Cargar datos locales aunque falle la conexión
+                cargarDatosLocales();
+                configurarInterfaz();
+                cambiarPagina('dashboard');
+                
+                alert('⚠️ Modo offline activado. Trabajando con datos locales.');
             } finally {
                 showLoading(false);
             }
@@ -3206,7 +3275,6 @@
         // ==============================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 Página cargada, iniciando aplicación...');
-            
             inicializarApp();
             
             // Verificar problemas de conexión
@@ -3234,16 +3302,6 @@
             updateStatusIndicator('disconnected', 'Sin conexión - Modo Offline');
             CONFIG.offlineMode = true;
         });
-        
-        // Prevenir salida sin guardar
-        window.addEventListener('beforeunload', (e) => {
-            if (reports.some(r => r.estado === 'Pendiente' && r.nivelRiesgo === 'Crítico')) {
-                e.preventDefault();
-                e.returnValue = 'Tienes condiciones inseguras críticas pendientes. ¿Seguro que quieres salir?';
-            }
-        });
-        
-        console.log('📱 Sistema optimizado para móviles y computadoras');
     </script>
 </body>
 </html>
