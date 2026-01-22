@@ -3081,75 +3081,128 @@
         // INICIALIZACIÓN
         // ==============================================
         async function inicializarApp() {
-            console.log('🚀 Inicializando Sistema de Condiciones Inseguras...');
-            showLoading(true, 'Iniciando sistema...');
+    console.log('🚀 Inicializando Sistema de Condiciones Inseguras...');
+    showLoading(true, 'Iniciando sistema...');
+    
+    try {
+        // 1. Crear cliente Supabase
+        supabaseClient = supabase.createClient(
+            MIS_CREDENCIALES.URL,
+            MIS_CREDENCIALES.API_KEY,
+            {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                },
+                global: {
+                    headers: {
+                        'apikey': MIS_CREDENCIALES.API_KEY,
+                        'Authorization': `Bearer ${MIS_CREDENCIALES.API_KEY}`
+                    }
+                }
+            }
+        );
+        
+        console.log('🔗 Cliente Supabase creado');
+        
+        // 2. Probar conexión simple
+        console.log('🔄 Probando conexión con Supabase...');
+        
+        try {
+            // Primero intentar una consulta simple
+            const { data, error } = await supabaseClient
+                .from('condiciones_inseguras')
+                .select('*')
+                .limit(1);
             
-            try {
-                // 1. Crear cliente Supabase con TUS CREDENCIALES
-                supabaseClient = supabase.createClient(
-                    MIS_CREDENCIALES.URL,
-                    MIS_CREDENCIALES.API_KEY,
-                    {
-                        auth: {
-                            persistSession: false
-                        }
-                    }
-                );
-                
-                console.log('🔗 Cliente Supabase creado');
-                
-                // 2. Probar conexión
-                const { data, error } = await supabaseClient
-                    .from('condiciones_inseguras')
-                    .select('count', { count: 'exact', head: true })
-                    .limit(1);
-                
-                if (error) {
-                    if (error.message.includes('does not exist')) {
-                        console.log('📋 Tabla no existe, pero conexión OK');
-                        updateStatusIndicator('connected', 'Conectado a Supabase');
-                        CONFIG.offlineMode = false;
-                    } else {
-                        throw error;
-                    }
-                } else {
-                    console.log('✅ Conexión exitosa con Supabase');
+            if (error) {
+                if (error.message.includes('does not exist')) {
+                    console.log('📋 Tabla no existe, pero conexión OK');
                     updateStatusIndicator('connected', 'Conectado a Supabase');
                     CONFIG.offlineMode = false;
+                } else if (error.message.includes('row-level security')) {
+                    console.log('🔐 Error RLS detectado, pero conexión funciona');
+                    updateStatusIndicator('connected', 'Conectado (RLS necesita ajuste)');
+                    CONFIG.offlineMode = false;
+                } else {
+                    throw error;
                 }
+            } else {
+                console.log('✅ Conexión exitosa con Supabase');
+                console.log(`📊 Datos encontrados: ${data ? data.length : 0} registros`);
+                updateStatusIndicator('connected', 'Conectado a Supabase');
+                CONFIG.offlineMode = false;
+            }
+        } catch (testError) {
+            console.log('⚠️  Error en prueba inicial:', testError.message);
+            
+            // Intentar otra prueba más simple
+            try {
+                const { data: testData, error: testError2 } = await supabaseClient
+                    .from('sectores')
+                    .select('*')
+                    .limit(1);
                 
-                // 3. Cargar datos locales primero
-                cargarDatosLocales();
-                console.log(`📊 Datos locales cargados: ${reports.length} reportes`);
-                
-                // 4. Sincronizar con Supabase
-                if (!CONFIG.offlineMode) {
-                    await sincronizarDatos();
+                if (!testError2) {
+                    console.log('✅ Conexión funciona con tabla sectores');
+                    updateStatusIndicator('connected', 'Conectado a Supabase');
+                    CONFIG.offlineMode = false;
+                } else {
+                    throw testError;
                 }
-                
-                // 5. Configurar interfaz
-                configurarInterfaz();
-                
-                // 6. Mostrar dashboard
-                cambiarPagina('dashboard');
-                
-                CONFIG.initialized = true;
-                console.log('✅ Sistema inicializado correctamente');
-                
-            } catch (error) {
-                console.error('❌ Error crítico en inicialización:', error);
-                updateStatusIndicator('error', 'Error de conexión');
-                
-                // Cargar datos locales aunque falle la conexión
-                cargarDatosLocales();
-                configurarInterfaz();
-                cambiarPagina('dashboard');
-                
-                alert('⚠️ Modo offline activado. Trabajando con datos locales.');
-            } finally {
-                showLoading(false);
+            } catch {
+                console.log('🔌 Modo offline - Usando datos locales');
+                updateStatusIndicator('disconnected', 'Modo Offline');
+                CONFIG.offlineMode = true;
             }
         }
+        
+        // 3. Cargar datos locales primero
+        cargarDatosLocales();
+        console.log(`📊 Datos locales cargados: ${reports.length} reportes`);
+        
+        // 4. Si hay conexión, sincronizar
+        if (!CONFIG.offlineMode) {
+            try {
+                await sincronizarDatos();
+            } catch (syncError) {
+                console.log('⚠️  Error en sincronización:', syncError.message);
+                CONFIG.offlineMode = true;
+            }
+        }
+        
+        // 5. Configurar interfaz
+        configurarInterfaz();
+        
+        // 6. Mostrar dashboard
+        cambiarPagina('dashboard');
+        
+        CONFIG.initialized = true;
+        console.log('✅ Sistema inicializado correctamente');
+        
+        // Mostrar estado final
+        if (CONFIG.offlineMode) {
+            mostrarNotificacion('⚠️ Modo offline activado', 'warning');
+        } else {
+            mostrarNotificacion('✅ Sistema conectado a Supabase', 'success');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error crítico en inicialización:', error);
+        updateStatusIndicator('error', 'Error de inicialización');
+        
+        // Cargar datos locales aunque falle la conexión
+        cargarDatosLocales();
+        configurarInterfaz();
+        cambiarPagina('dashboard');
+        
+        mostrarNotificacion('⚠️ Error de conexión. Modo offline activado.', 'error');
+        
+    } finally {
+        showLoading(false);
+    }
+}
         
         function configurarInterfaz() {
             // Configurar navegación
@@ -3269,7 +3322,158 @@
                 document.head.appendChild(style);
             }
         }
+        // ==============================================
+// FUNCIÓN PARA PROBAR RLS (AGREGAR AQUÍ)
+// ==============================================
+
+async function probarRLS() {
+    try {
+        console.log('🔍 Probando políticas RLS...');
         
+        // 1. Probar INSERT
+        console.log('🔄 Probando INSERT...');
+        const testData = {
+            ot: `TEST-${Date.now()}`,
+            reportado_por: 'Test RLS',
+            descripcion: 'Prueba de políticas RLS',
+            sector: 'Producción',
+            ubicacion_especifica: 'Área de prueba',
+            tipo_riesgo: 'Mecánico',
+            nivel_riesgo: 'Bajo',
+            fecha_estimada_reparacion: new Date().toISOString().split('T')[0],
+            estado: 'Pendiente'
+        };
+        
+        const { data: insertData, error: insertError } = await supabaseClient
+            .from('condiciones_inseguras')
+            .insert([testData])
+            .select();
+        
+        if (insertError) {
+            console.error('❌ Error en INSERT:', insertError.message);
+            return { success: false, error: 'INSERT: ' + insertError.message };
+        }
+        
+        console.log('✅ INSERT exitoso:', insertData);
+        
+        // 2. Probar SELECT
+        console.log('🔄 Probando SELECT...');
+        const { data: selectData, error: selectError } = await supabaseClient
+            .from('condiciones_inseguras')
+            .select('*')
+            .eq('ot', testData.ot);
+        
+        if (selectError) {
+            console.error('❌ Error en SELECT:', selectError.message);
+            return { success: false, error: 'SELECT: ' + selectError.message };
+        }
+        
+        console.log('✅ SELECT exitoso:', selectData.length, 'registros');
+        
+        // 3. Probar UPDATE
+        console.log('🔄 Probando UPDATE...');
+        const { data: updateData, error: updateError } = await supabaseClient
+            .from('condiciones_inseguras')
+            .update({ estado: 'En Proceso' })
+            .eq('ot', testData.ot)
+            .select();
+        
+        if (updateError) {
+            console.error('❌ Error en UPDATE:', updateError.message);
+            return { success: false, error: 'UPDATE: ' + updateError.message };
+        }
+        
+        console.log('✅ UPDATE exitoso:', updateData);
+        
+        // 4. Limpiar datos de prueba
+        console.log('🔄 Limpiando datos de prueba...');
+        const { error: deleteError } = await supabaseClient
+            .from('condiciones_inseguras')
+            .delete()
+            .eq('ot', testData.ot);
+        
+        if (deleteError) {
+            console.error('⚠️  Error limpiando datos:', deleteError.message);
+        } else {
+            console.log('✅ Datos de prueba eliminados');
+        }
+        
+        console.log('🎉 Todas las pruebas RLS PASARON!');
+        return { success: true, message: 'Políticas RLS funcionando correctamente' };
+        
+    } catch (error) {
+        console.error('❌ Error en prueba RLS:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Función para agregar botón de prueba
+function agregarBotonPruebaRLS() {
+    // Verificar si ya existe el botón
+    if (document.getElementById('btn-prueba-rls')) return;
+    
+    const btn = document.createElement('button');
+    btn.id = 'btn-prueba-rls';
+    btn.innerHTML = '🔐 Probar RLS';
+    btn.style.cssText = `
+        position: fixed;
+        bottom: 120px;
+        right: 20px;
+        z-index: 1000;
+        padding: 10px 15px;
+        background: #9b59b6;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    `;
+    
+    btn.onclick = async () => {
+        showLoading(true, 'Probando políticas RLS...');
+        const result = await probarRLS();
+        showLoading(false);
+        
+        if (result.success) {
+            alert('✅ ' + result.message);
+            mostrarNotificacion('✅ RLS funcionando correctamente', 'success');
+        } else {
+            alert('❌ ' + result.error);
+            mostrarNotificacion('❌ Error en RLS: ' + result.error, 'error');
+        }
+    };
+    
+    document.body.appendChild(btn);
+    console.log('✅ Botón de prueba RLS agregado');
+}
+
+// También agrega esta función de prueba directa para consola
+window.pruebaRLS = probarRLS; // Hacerla disponible en consola
+window.probarConexion = async function() {
+    console.log('🔍 Probando conexión completa...');
+    const result = await probarRLS();
+    console.log(result.success ? '✅ ' + result.message : '❌ ' + result.error);
+    return result;
+};
+
+// ==============================================
+// INICIALIZAR AL CARGAR LA PÁGINA
+// ==============================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 Página cargada, iniciando aplicación...');
+    inicializarApp();
+    
+    // Agregar botón después de 5 segundos
+    setTimeout(() => {
+        if (supabaseClient && !CONFIG.offlineMode) {
+            agregarBotonPruebaRLS();
+        }
+    }, 5000);
+    
+    // ... resto del código ...
+});
         // ==============================================
         // INICIALIZAR AL CARGAR LA PÁGINA
         // ==============================================
