@@ -1297,12 +1297,12 @@
                                     <label for="sector" class="required">Sector/Área *</label>
                                     <select class="form-control" id="sector" required>
                                         <option value="">Seleccione</option>
-                                        <option value="Producción">Producción</option>
-                                        <option value="Almacén">Almacén</option>
+                                        <option value="Confiteria y Galleteria">Confiteria y Galleteria</option>
+                                        <option value="Refineria">Refineria</option>
                                         <option value="Mantenimiento">Mantenimiento</option>
                                         <option value="Aceites">Aceites</option>
-                                        <option value="Oficinas">Oficinas</option>
-                                        <option value="Laboratorio">Laboratorio</option>
+                                        <option value="Jaboneria">Jaboneria</option>
+                                        <option value="Fraccionamiento">Fraccionamiento</option>
                                         <option value="Externo">Externo</option>
                                     </select>
                                 </div>
@@ -1402,11 +1402,11 @@
                             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <select class="form-control" id="filter-sector" style="width: 150px;">
                                     <option value="">Todos los sectores</option>
-                                    <option value="Producción">Producción</option>
-                                    <option value="Almacén">Almacén</option>
+                                    <option value="Confiteria y Galleteria">Confiteria y Galleteria</option>
+                                    <option value="Refineria">Refineria</option>
                                     <option value="Mantenimiento">Mantenimiento</option>
                                     <option value="Aceites">Aceites</option>
-                                    <option value="Oficinas">Oficinas</option>
+                                    <option value="Jaboneria">Jaboneria</option>
                                 </select>
                                 
                                 <select class="form-control" id="filter-risk-level" style="width: 150px;">
@@ -1684,12 +1684,12 @@
                 'Bajo': '#f1c40f'
             },
             sector: {
-                'Producción': '#3498db',
-                'Almacén': '#2ecc71',
+                'Confiteria y Galleteria': '#3498db',
+                'Refineria': '#2ecc71',
                 'Mantenimiento': '#e74c3c',
                 'Aceites': '#f39c12',
-                'Oficinas': '#9b59b6',
-                'Laboratorio': '#1abc9c',
+                'Jaboneria': '#9b59b6',
+                'Fraccionamiento': '#1abc9c',
                 'Externo': '#95a5a6'
             }
         };
@@ -3387,7 +3387,7 @@
         }
         
         function simularDatos() {
-            const sectores = ['Producción', 'Almacén', 'Mantenimiento', 'Aceites', 'Oficinas'];
+            const sectores = ['Confiteria y Galleteria', 'Refineria', 'Mantenimiento', 'Aceites', 'Jaboneria'];
             const riesgos = ['Mecánico', 'Eléctrico', 'Químico', 'Ergonómico'];
             const niveles = ['Crítico', 'Alto', 'Medio', 'Bajo'];
             const estados = ['Pendiente', 'En Proceso', 'Reparado'];
