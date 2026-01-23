@@ -1638,15 +1638,18 @@
         // CONFIGURACIÓN GLOBAL - YA CONECTADO A TU SUPABASE
         // ==============================================
         let supabaseClient = null;
-        let reports = [];
-        let movements = [];
-        let accidents = [];
-        let currentFilter = 'all';
-        let evolutionChart = null;
-        let sectorChart = null;
-        let riskLevelChart = null;
-        let trendChart = null;
-        let repairTimeChart = null;
+let reports = [];
+let movements = [];
+let accidents = [];
+let currentFilter = 'all';
+let evolutionChart = null;
+let sectorChart = null;
+let riskLevelChart = null;
+let trendChart = null;
+let repairTimeChart = null;
+
+// NUEVA: Variable para la cámara
+let cameraStream = null;
         
         // TUS CREDENCIALES DE SUPABASE
         const MIS_CREDENCIALES = {
@@ -1946,57 +1949,70 @@
         }
         
         async function subirFotoASupabase(file, ot, tipo = 'antes') {
-            try {
-                console.log(`📤 Subiendo foto para OT: ${ot}, Tipo: ${tipo}`);
-                
-                // Validar que tenemos conexión
-                if (!supabaseClient) {
-                    throw new Error('No hay conexión con Supabase');
-                }
-                
-                // Generar nombre único
-                const timestamp = Date.now();
-                const randomId = Math.random().toString(36).substring(2, 9);
-                const safeOT = ot.replace(/[^a-zA-Z0-9-_]/g, '_');
-                const extension = file.name.split('.').pop().toLowerCase();
-                const fileName = `${safeOT}_${tipo}_${timestamp}_${randomId}.${extension}`;
-                
-                // Subir el archivo
-                const { data, error } = await supabaseClient.storage
-                    .from(BUCKET_NAME)
-                    .upload(fileName, file, {
-                        cacheControl: '3600',
-                        upsert: true
-                    });
-                
-                if (error) {
-                    console.error('Error en upload:', error);
-                    throw error;
-                }
-                
-                console.log('✅ Archivo subido:', data);
-                
-                // Obtener URL pública
-                const { data: { publicUrl } } = supabaseClient.storage
-                    .from(BUCKET_NAME)
-                    .getPublicUrl(fileName);
-                
-                console.log('🔗 URL pública:', publicUrl);
-                
-                return {
-                    success: true,
-                    url: publicUrl,
-                    fileName: fileName
-                };
-                
-            } catch (error) {
-                console.error('❌ Error subiendo foto:', error);
-                return {
-                    success: false,
-                    error: error.message
-                };
-            }
+    try {
+        console.log(`📤 Subiendo foto para OT: ${ot}, Tipo: ${tipo}`);
+        
+        if (!supabaseClient) {
+            throw new Error('No hay conexión con Supabase');
         }
+        
+        // Verificar que el bucket existe
+        const { data: buckets, error: bucketsError } = await supabaseClient.storage.listBuckets();
+        if (bucketsError) {
+            // Intentar crear el bucket
+            const { error: createError } = await supabaseClient.storage.createBucket(BUCKET_NAME, {
+                public: true,
+                fileSizeLimit: 5242880 // 5MB
+            });
+            if (createError) throw createError;
+        }
+        
+        // Generar nombre seguro
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 9);
+        const safeOT = ot.replace(/[^a-zA-Z0-9]/g, '_');
+        const extension = file.name.split('.').pop().toLowerCase();
+        const fileName = `${safeOT}_${tipo}_${timestamp}_${randomId}.${extension}`;
+        
+        console.log('📄 Subiendo archivo:', fileName);
+        
+        // Subir con opciones específicas
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+            .from(BUCKET_NAME)
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: file.type
+            });
+        
+        if (uploadError) {
+            console.error('❌ Error en upload:', uploadError);
+            throw uploadError;
+        }
+        
+        console.log('✅ Archivo subido:', uploadData);
+        
+        // Obtener URL pública CORRECTA
+        const { data: { publicUrl } } = supabaseClient.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(fileName);
+        
+        console.log('🔗 URL pública obtenida:', publicUrl);
+        
+        return {
+            success: true,
+            url: publicUrl,
+            fileName: fileName
+        };
+        
+    } catch (error) {
+        console.error('❌ Error subiendo foto:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
         
         // ==============================================
         // FUNCIONES DE NAVEGACIÓN
@@ -2585,100 +2601,195 @@
                 reader.readAsDataURL(file);
             }
         }
+        function tomarFotoCamara(tipo) {
+    const cameraPreview = document.getElementById('camera-preview');
+    const cameraVideo = document.getElementById('camera-video');
+    
+    cameraPreview.style.display = 'block';
+    
+    // Solicitar acceso a la cámara
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment', // Cámara trasera
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        },
+        audio: false 
+    })
+    .then(stream => {
+        cameraStream = stream;
+        cameraVideo.srcObject = stream;
+    })
+    .catch(error => {
+        console.error('Error accediendo a la cámara:', error);
+        alert('No se pudo acceder a la cámara. Por favor permite el acceso o usa la galería.');
+        cameraPreview.style.display = 'none';
+    });
+}
+
+function cerrarCamara() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    document.getElementById('camera-preview').style.display = 'none';
+}
+
+function capturarFoto() {
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('camera-canvas');
+    const preview = document.getElementById('repair-image-preview');
+    
+    // Configurar canvas con las dimensiones del video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Dibujar el frame actual del video en el canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convertir a blob y crear vista previa
+    canvas.toBlob(blob => {
+        const file = new File([blob], `reparacion_${Date.now()}.jpg`, { type: 'image/jpeg' });
         
+        // Crear URL para vista previa
+        const url = URL.createObjectURL(blob);
+        
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'image-preview-item';
+        imgContainer.innerHTML = `
+            <img src="${url}" alt="Foto de reparación">
+            <button class="remove-image" onclick="removerImagenReparacion(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        preview.appendChild(imgContainer);
+        
+        // Guardar el blob para enviarlo luego
+        imgContainer.setAttribute('data-blob', url);
+        imgContainer.setAttribute('data-file', JSON.stringify({
+            name: file.name,
+            type: file.type
+        }));
+        
+        // Cerrar cámara
+        cerrarCamara();
+        
+    }, 'image/jpeg', 0.9);
+}
+
+function abrirGaleriaReparacion() {
+    document.getElementById('foto-despues-input').click();
+}
         async function confirmarReparacion(ot) {
-            const reparadoPor = document.getElementById('reparado-por').value;
-            if (!reparadoPor) {
-                alert('❌ Por favor ingresa el nombre de quien realizó la reparación');
-                return;
+    const reparadoPor = document.getElementById('reparado-por').value;
+    if (!reparadoPor) {
+        alert('❌ Por favor ingresa el nombre de quien realizó la reparación');
+        return;
+    }
+    
+    // Verificar que haya al menos una foto
+    const imagePreviews = document.querySelectorAll('#repair-image-preview .image-preview-item');
+    if (imagePreviews.length === 0) {
+        alert('❌ Por favor toma al menos una foto de la reparación completada');
+        return;
+    }
+    
+    showLoading(true, 'Completando reparación...');
+    
+    try {
+        // Subir fotos "después"
+        const fotosDespuesUrls = [];
+        
+        for (const imgContainer of imagePreviews) {
+            const img = imgContainer.querySelector('img');
+            const blobData = imgContainer.getAttribute('data-blob');
+            const fileData = imgContainer.getAttribute('data-file');
+            
+            let file;
+            
+            if (blobData && fileData) {
+                // Es una foto de la cámara
+                const fileInfo = JSON.parse(fileData);
+                
+                // Convertir data URL a blob
+                const response = await fetch(blobData);
+                const blob = await response.blob();
+                
+                file = new File([blob], fileInfo.name, { type: fileInfo.type });
+            } else {
+                // Es una foto de la galería
+                const response = await fetch(img.src);
+                const blob = await response.blob();
+                file = new File([blob], `reparacion_${ot}_${Date.now()}.jpg`, { type: 'image/jpeg' });
             }
             
-            showLoading(true, 'Completando reparación...');
-            
-            try {
-                // Subir fotos "después"
-                const imagePreviews = document.querySelectorAll('#repair-image-preview .image-preview-item img');
-                const fotosDespuesUrls = [];
-                
-                for (const img of imagePreviews) {
-                    const blob = await (await fetch(img.src)).blob();
-                    const file = new File([blob], `reparacion_${ot}_${Date.now()}.jpg`, { type: 'image/jpeg' });
-                    
-                    const result = await subirFotoASupabase(file, ot, 'despues');
-                    if (result.success) {
-                        fotosDespuesUrls.push(result.url);
-                    }
-                }
-                
-                // Actualizar en Supabase
-                const updateData = {
-                    estado: 'Reparado',
-                    reparado_por: reparadoPor,
-                    fecha_reparacion: document.getElementById('fecha-reparacion').value || obtenerTimestamp(),
-                    observaciones_reparacion: document.getElementById('obs-reparacion').value
-                };
-                
-                // Agregar fotos "después" si hay
-                if (fotosDespuesUrls.length > 0) {
-                    updateData.fotos_despues = fotosDespuesUrls;
-                }
-                
-                const { error: errorReporte } = await supabaseClient
-                    .from('condiciones_inseguras')
-                    .update(updateData)
-                    .eq('ot', ot);
-                
-                if (errorReporte) throw errorReporte;
-                
-                // Crear movimiento
-                const movimientoReparacion = {
-                    ot: ot,
-                    tipo_movimiento: 'Reparado',
-                    responsable: reparadoPor,
-                    observaciones: `Reparación completada por ${reparadoPor}`,
-                    fecha_movimiento: obtenerTimestamp()
-                };
-                
-                const { error: errorMovimiento } = await supabaseClient
-                    .from('movimientos_condiciones')
-                    .insert([movimientoReparacion]);
-                
-                if (errorMovimiento) throw errorMovimiento;
-                
-                // Actualizar localmente
-                const reporte = reports.find(r => r.ot === ot);
-                if (reporte) {
-                    reporte.estado = 'Reparado';
-                    reporte.reparado_por = reparadoPor;
-                    reporte.fecha_reparacion = movimientoReparacion.fecha_movimiento;
-                    reporte.fotos_despues = fotosDespuesUrls;
-                }
-                
-                movements.push(movimientoReparacion);
-                guardarDatosLocales();
-                
-                cerrarModal();
-                alert(`✅ Reporte ${ot} marcado como reparado por ${reparadoPor}`);
-                
-                cargarHistorial();
-                actualizarEstadisticasDashboard();
-                
-            } catch (error) {
-                console.error('Error completando reparación:', error);
-                alert('❌ Error al completar la reparación');
-            } finally {
-                showLoading(false);
+            const result = await subirFotoASupabase(file, ot, 'despues');
+            if (result.success) {
+                fotosDespuesUrls.push(result.url);
             }
         }
         
-        function cerrarModal() {
-            document.getElementById('conditionModal').style.display = 'none';
+        // Actualizar en Supabase
+        const updateData = {
+            estado: 'Reparado',
+            reparado_por: reparadoPor,
+            fecha_reparacion: document.getElementById('fecha-reparacion').value || obtenerTimestamp(),
+            observaciones_reparacion: document.getElementById('obs-reparacion').value
+        };
+        
+        // Agregar fotos "después"
+        if (fotosDespuesUrls.length > 0) {
+            updateData.fotos_despues = fotosDespuesUrls;
         }
         
-        function exportarExcel() {
-            alert('📊 Exportando datos a Excel...');
+        const { error: errorReporte } = await supabaseClient
+            .from('condiciones_inseguras')
+            .update(updateData)
+            .eq('ot', ot);
+        
+        if (errorReporte) throw errorReporte;
+        
+        // Crear movimiento
+        const movimientoReparacion = {
+            ot: ot,
+            tipo_movimiento: 'Reparado',
+            responsable: reparadoPor,
+            observaciones: `Reparación completada por ${reparadoPor}`,
+            fecha_movimiento: obtenerTimestamp()
+        };
+        
+        const { error: errorMovimiento } = await supabaseClient
+            .from('movimientos_condiciones')
+            .insert([movimientoReparacion]);
+        
+        if (errorMovimiento) throw errorMovimiento;
+        
+        // Actualizar localmente
+        const reporte = reports.find(r => r.ot === ot);
+        if (reporte) {
+            reporte.estado = 'Reparado';
+            reporte.reparado_por = reparadoPor;
+            reporte.fecha_reparacion = movimientoReparacion.fecha_movimiento;
+            reporte.fotos_despues = fotosDespuesUrls;
         }
         
+        movements.push(movimientoReparacion);
+        guardarDatosLocales();
+        
+        cerrarModal();
+        alert(`✅ Reporte ${ot} marcado como reparado por ${reparadoPor}`);
+        
+        cargarHistorial();
+        actualizarEstadisticasDashboard();
+        
+    } catch (error) {
+        console.error('Error completando reparación:', error);
+        alert('❌ Error al completar la reparación: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
         // ==============================================
         // FUNCIÓN PARA FILTRAR REPORTES POR PERÍODO
         // ==============================================
@@ -3420,27 +3531,40 @@
             }, 500);
         }
         
-        function registrarAccidente() {
-            const descripcion = prompt('Descripción del accidente:');
-            if (!descripcion) return;
-            
-            const gravedad = prompt('Gravedad (Leve, Moderada, Grave):', 'Moderada');
-            const sector = prompt('Sector donde ocurrió:', 'Producción');
-            
-            const nuevoAccidente = {
-                fecha: obtenerTimestamp(),
-                descripcion: descripcion,
-                gravedad: gravedad,
-                sector: sector
-            };
-            
-            accidents.push(nuevoAccidente);
-            localStorage.setItem('ultimo_accidente_dias', '0'); // Reiniciar contador
-            guardarDatosLocales();
-            
-            alert('⚠️ Accidente registrado. Se reiniciará el contador de días sin accidentes.');
-            actualizarDiasSinAccidentes();
-        }
+        async function registrarAccidente() {
+    const descripcion = prompt('Descripción del accidente:');
+    if (!descripcion) return;
+    
+    const gravedad = prompt('Gravedad (Leve, Moderada, Grave):', 'Moderada');
+    const sector = prompt('Sector donde ocurrió:', 'Producción');
+    
+    const nuevoAccidente = {
+        fecha: obtenerTimestamp(),
+        descripcion: descripcion,
+        gravedad: gravedad,
+        sector: sector
+    };
+    
+    // Guardar en Supabase
+    try {
+        const { data, error } = await supabaseClient
+            .from('accidentes')
+            .insert([nuevoAccidente]);
+        
+        if (error) throw error;
+        
+        // Actualizar localmente
+        accidents.push(nuevoAccidente);
+        guardarDatosLocales();
+        
+        alert('⚠️ Accidente registrado. Se reiniciará el contador de días sin accidentes.');
+        actualizarDiasSinAccidentes();
+        
+    } catch (error) {
+        console.error('Error guardando accidente:', error);
+        alert('❌ Error al guardar el accidente: ' + error.message);
+    }
+}
         
         // ==============================================
         // FUNCIONES DE ALMACENAMIENTO LOCAL
@@ -3459,50 +3583,71 @@
         }
         
         function cargarDatosLocales() {
-            try {
-                const datosGuardados = localStorage.getItem('condiciones_inseguras');
-                if (datosGuardados) {
-                    const datos = JSON.parse(datosGuardados);
-                    reports = datos.reports || [];
-                    movements = datos.movements || [];
-                    accidents = datos.accidents || [];
+    try {
+        const datosGuardados = localStorage.getItem('condiciones_inseguras');
+        if (datosGuardados) {
+            const datos = JSON.parse(datosGuardados);
+            reports = datos.reports || [];
+            movements = datos.movements || [];
+            accidents = datos.accidents || [];
+            
+            // Si no hay accidentes, intentar cargar de Supabase
+            if (accidents.length === 0 && supabaseClient && !CONFIG.offlineMode) {
+                cargarAccidentesDesdeSupabase();
+            } else if (accidents.length === 0) {
+                // Si no hay accidentes pero había un valor guardado
+                const diasGuardados = localStorage.getItem('ultimo_accidente_dias');
+                if (diasGuardados && diasGuardados !== "365") {
+                    // Crear un accidente ficticio para mantener el contador
+                    const hoy = new Date();
+                    const fechaAccidente = new Date(hoy);
+                    fechaAccidente.setDate(fechaAccidente.getDate() - parseInt(diasGuardados));
                     
-                    // Si no hay accidentes pero había un valor guardado
-                    if (accidents.length === 0) {
-                        const diasGuardados = localStorage.getItem('ultimo_accidente_dias');
-                        if (diasGuardados && diasGuardados !== "365") {
-                            // Crear un accidente ficticio para mantener el contador
-                            const hoy = new Date();
-                            const fechaAccidente = new Date(hoy);
-                            fechaAccidente.setDate(fechaAccidente.getDate() - parseInt(diasGuardados));
-                            
-                            accidents.push({
-                                fecha: fechaAccidente.toISOString(),
-                                descripcion: 'Último accidente registrado',
-                                gravedad: 'Moderada',
-                                sector: 'General'
-                            });
-                        }
-                    }
-                } else {
-                    reports = [];
-                    movements = [];
-                    accidents = [];
+                    accidents.push({
+                        fecha: fechaAccidente.toISOString(),
+                        descripcion: 'Último accidente registrado',
+                        gravedad: 'Moderada',
+                        sector: 'General'
+                    });
                 }
-                
-                const notificacionesGuardadas = localStorage.getItem('notifications_config');
-                if (notificacionesGuardadas) {
-                    CONFIG.notifications = JSON.parse(notificacionesGuardadas);
-                }
-                
-            } catch (error) {
-                console.error('Error cargando datos locales:', error);
-                reports = [];
-                movements = [];
-                accidents = [];
             }
+        } else {
+            reports = [];
+            movements = [];
+            accidents = [];
         }
         
+        const notificacionesGuardadas = localStorage.getItem('notifications_config');
+        if (notificacionesGuardadas) {
+            CONFIG.notifications = JSON.parse(notificacionesGuardadas);
+        }
+        
+    } catch (error) {
+        console.error('Error cargando datos locales:', error);
+        reports = [];
+        movements = [];
+        accidents = [];
+    }
+}
+        async function cargarAccidentesDesdeSupabase() {
+    try {
+        if (!supabaseClient || CONFIG.offlineMode) return;
+        
+        const { data, error } = await supabaseClient
+            .from('accidentes')
+            .select('*')
+            .order('fecha', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (data) {
+            accidents = data;
+            guardarDatosLocales();
+        }
+    } catch (error) {
+        console.error('Error cargando accidentes:', error);
+    }
+}
         // ==============================================
         // FUNCIONES DE SINCRONIZACIÓN
         // ==============================================
