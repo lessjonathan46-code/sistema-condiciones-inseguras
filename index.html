@@ -2152,108 +2152,224 @@
         }
         
         function actualizarGraficoEvolucion() {
-            const ctx = document.getElementById('evolution-chart');
-            if (!ctx) return;
-            
-            if (evolutionChart) {
-                evolutionChart.destroy();
-            }
-            
-            const periodo = document.getElementById('time-period').value;
-            let dias = 30;
-            if (periodo === '7d') dias = 7;
-            if (periodo === '90d') dias = 90;
-            if (periodo === '180d') dias = 180;
-            if (periodo === '1y') dias = 365;
-            
-            const hoy = new Date();
-            const fechas = [];
-            const datosPendientes = [];
-            const datosReparados = [];
-            
-            for (let i = dias - 1; i >= 0; i--) {
-                const fecha = new Date(hoy);
-                fecha.setDate(fecha.getDate() - i);
-                const fechaStr = fecha.toISOString().split('T')[0];
+    const ctx = document.getElementById('evolution-chart');
+    if (!ctx) return;
+    
+    if (evolutionChart) {
+        evolutionChart.destroy();
+    }
+    
+    const periodo = document.getElementById('time-period').value;
+    let dias = 30;
+    if (periodo === '7d') dias = 7;
+    if (periodo === '90d') dias = 90;
+    if (periodo === '180d') dias = 180;
+    if (periodo === '1y') dias = 365;
+    
+    const hoy = new Date();
+    const fechas = [];
+    const datosNuevosReportes = []; // Cambiado de datosPendientes
+    const datosReparados = [];
+    
+    // Crear array de fechas
+    for (let i = dias - 1; i >= 0; i--) {
+        const fecha = new Date(hoy);
+        fecha.setDate(fecha.getDate() - i);
+        const fechaStr = fecha.toISOString().split('T')[0];
+        
+        // Formatear para mostrar en el gráfico
+        if (dias <= 30) {
+            // Para períodos cortos, mostrar día-mes
+            fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
+        } else if (dias <= 90) {
+            // Para períodos medianos, mostrar día cada 3 días
+            if (i % 3 === 0) {
                 fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
-                
-                const pendientes = reports.filter(r => {
-                    const reporteFecha = new Date(r.fecha_reporte);
-                    return reporteFecha.toISOString().split('T')[0] === fechaStr && r.estado === 'Pendiente';
-                }).length;
-                
-                const reparados = reports.filter(r => {
-                    if (r.estado !== 'Reparado') return false;
-                    const reparacionFecha = new Date(r.fecha_reparacion);
-                    return reparacionFecha.toISOString().split('T')[0] === fechaStr;
-                }).length;
-                
-                datosPendientes.push(pendientes);
-                datosReparados.push(reparados);
+            } else {
+                fechas.push('');
             }
-            
-            evolutionChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: fechas,
-                    datasets: [
-                        {
-                            label: 'Nuevos Reportes',
-                            data: datosPendientes,
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Reparados',
-                            data: datosReparados,
-                            borderColor: '#27ae60',
-                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4
-                        }
-                    ]
+        } else {
+            // Para períodos largos, mostrar semana
+            if (i % 7 === 0) {
+                fechas.push(`Sem ${Math.floor(i/7)}`);
+            } else {
+                fechas.push('');
+            }
+        }
+        
+        // Contar NUEVOS reportes creados en esta fecha (sin importar estado)
+        const nuevosReportes = reports.filter(r => {
+            if (!r.fecha_reporte) return false;
+            const reporteFecha = new Date(r.fecha_reporte);
+            const reporteFechaStr = reporteFecha.toISOString().split('T')[0];
+            return reporteFechaStr === fechaStr;
+        }).length;
+        
+        datosNuevosReportes.push(nuevosReportes);
+        
+        // Contar reportes REPARADOS en esta fecha
+        const reparados = reports.filter(r => {
+            if (r.estado !== 'Reparado' || !r.fecha_reparacion) return false;
+            const reparacionFecha = new Date(r.fecha_reparacion);
+            const reparacionFechaStr = reparacionFecha.toISOString().split('T')[0];
+            return reparacionFechaStr === fechaStr;
+        }).length;
+        
+        datosReparados.push(reparados);
+    }
+    
+    // Para períodos largos, filtrar fechas vacías
+    let labelsFinal = fechas;
+    let nuevosFinal = datosNuevosReportes;
+    let reparadosFinal = datosReparados;
+    
+    if (dias > 30) {
+        // Filtrar solo las fechas no vacías
+        labelsFinal = [];
+        nuevosFinal = [];
+        reparadosFinal = [];
+        
+        for (let i = 0; i < fechas.length; i++) {
+            if (fechas[i] !== '') {
+                labelsFinal.push(fechas[i]);
+                nuevosFinal.push(datosNuevosReportes[i]);
+                reparadosFinal.push(datosReparados[i]);
+            }
+        }
+    }
+    
+    evolutionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labelsFinal,
+            datasets: [
+                {
+                    label: 'Nuevos Reportes',
+                    data: nuevosFinal,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: '#2c3e50',
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            },
-                            ticks: {
-                                color: '#7f8c8d'
-                            }
+                {
+                    label: 'Reparados',
+                    data: reparadosFinal,
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#2c3e50',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
                         },
-                        x: {
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            },
-                            ticks: {
-                                color: '#2c3e50',
-                                maxRotation: 45
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: '#2c3e50',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
                             }
+                            label += context.parsed.y + ' reporte' + (context.parsed.y !== 1 ? 's' : '');
+                            return label;
                         }
                     }
                 }
-            });
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#7f8c8d',
+                        font: {
+                            size: 11
+                        },
+                        callback: function(value) {
+                            if (value % 1 === 0) {
+                                return value;
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Cantidad de Reportes',
+                        color: '#2c3e50',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#2c3e50',
+                        font: {
+                            size: 11
+                        },
+                        maxRotation: 45
+                    },
+                    title: {
+                        display: true,
+                        text: 'Período de Tiempo',
+                        color: '#2c3e50',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'nearest'
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
         }
+    });
+    
+    // También actualizamos el gráfico cuando se cambia el período
+    document.getElementById('time-period').addEventListener('change', function() {
+        actualizarGraficoEvolucion();
+        mostrarNotificacion('✅ Gráfico de evolución actualizado', 'success');
+    });
+}
         
         // ==============================================
         // FUNCIONES PARA NUEVO REPORTE
