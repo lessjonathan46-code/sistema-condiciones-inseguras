@@ -1184,9 +1184,6 @@
                                     <option value="180d">Últimos 6 meses</option>
                                     <option value="1y">Último año</option>
                                 </select>
-                                <button class="btn btn-primary" onclick="actualizarGraficoEvolucion()">
-                                    <i class="fas fa-sync-alt"></i> Actualizar
-                                </button>
                             </div>
                         </div>
                         <div class="evolution-container">
@@ -1811,13 +1808,23 @@
         }
         
         function calcularDiasSinAccidentes() {
-            if (accidents.length === 0) return 365;
+            if (accidents.length === 0) {
+                // Si no hay accidentes registrados, verificar si hay un valor guardado
+                const diasGuardados = localStorage.getItem('ultimo_accidente_dias');
+                if (diasGuardados && diasGuardados !== "365") {
+                    return parseInt(diasGuardados);
+                }
+                return 365;
+            }
             
             const ultimoAccidente = accidents.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
             const hoy = new Date();
             const ultimaFecha = new Date(ultimoAccidente.fecha);
             const diferenciaMs = hoy - ultimaFecha;
             const diferenciaDias = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
+            
+            // Guardar el valor en localStorage para persistencia
+            localStorage.setItem('ultimo_accidente_dias', diferenciaDias);
             
             return diferenciaDias;
         }
@@ -1903,6 +1910,11 @@
             container.remove();
         }
         
+        function removerImagenReparacion(button) {
+            const container = button.parentElement;
+            container.remove();
+        }
+        
         function tomarFoto() {
             alert('📸 Función de tomar foto disponible en dispositivos móviles con cámara');
             document.getElementById('photo-input').click();
@@ -1910,6 +1922,27 @@
         
         function abrirGaleria() {
             document.getElementById('photo-input').click();
+        }
+        
+        function ampliarFoto(url) {
+            const modalContent = document.getElementById('modal-content');
+            modalContent.innerHTML = `
+                <div style="text-align: center;">
+                    <h3 style="margin-bottom: 15px;"><i class="fas fa-camera"></i> Vista Ampliada</h3>
+                    <img src="${url}" 
+                         style="max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                         alt="Foto ampliada">
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="window.open('${url}', '_blank')">
+                            <i class="fas fa-external-link-alt"></i> Abrir en nueva pestaña
+                        </button>
+                        <button class="btn btn-secondary" onclick="cerrarModal()" style="margin-left: 10px;">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('conditionModal').style.display = 'flex';
         }
         
         async function subirFotoASupabase(file, ot, tipo = 'antes') {
@@ -2311,6 +2344,40 @@
                     tiempoReparacion = `${dias} días`;
                 }
                 
+                // Columna Foto Antes
+                let fotoAntesHTML = '<i class="fas fa-times" style="color: #95a5a6;"></i> Sin foto';
+                if (reporte.fotos_antes && reporte.fotos_antes.length > 0) {
+                    fotoAntesHTML = `
+                        <div style="position: relative;">
+                            <img src="${reporte.fotos_antes[0]}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                 onclick="ampliarFoto('${reporte.fotos_antes[0]}')"
+                                 title="Click para ampliar">
+                            ${reporte.fotos_antes.length > 1 ? 
+                                `<span style="position: absolute; top: -5px; right: -5px; background: #3498db; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center;">
+                                    +${reporte.fotos_antes.length - 1}
+                                </span>` : ''}
+                        </div>
+                    `;
+                }
+                
+                // Columna Foto Después
+                let fotoDespuesHTML = '<i class="fas fa-times" style="color: #95a5a6;"></i> Sin foto';
+                if (reporte.fotos_despues && reporte.fotos_despues.length > 0) {
+                    fotoDespuesHTML = `
+                        <div style="position: relative;">
+                            <img src="${reporte.fotos_despues[0]}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                                 onclick="ampliarFoto('${reporte.fotos_despues[0]}')"
+                                 title="Click para ampliar">
+                            ${reporte.fotos_despues.length > 1 ? 
+                                `<span style="position: absolute; top: -5px; right: -5px; background: #27ae60; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center;">
+                                    +${reporte.fotos_despues.length - 1}
+                                </span>` : ''}
+                        </div>
+                    `;
+                }
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><span class="ot-code">${reporte.ot}</span></td>
@@ -2319,16 +2386,8 @@
                     </td>
                     <td>${reporte.sector}</td>
                     <td><span class="risk-badge ${obtenerRiesgoClase(reporte.nivel_riesgo)}">${reporte.nivel_riesgo}</span></td>
-                    <td>
-                        ${reporte.fotos_antes && reporte.fotos_antes.length > 0 ? 
-                            `<i class="fas fa-camera" style="color: #3498db;"></i> ${reporte.fotos_antes.length} foto(s)` : 
-                            '<i class="fas fa-times" style="color: #95a5a6;"></i> Sin foto'}
-                    </td>
-                    <td>
-                        ${reporte.fotos_despues && reporte.fotos_despues.length > 0 ? 
-                            `<i class="fas fa-camera" style="color: #27ae60;"></i> ${reporte.fotos_despues.length} foto(s)` : 
-                            '<i class="fas fa-times" style="color: #95a5a6;"></i> Sin foto'}
-                    </td>
+                    <td>${fotoAntesHTML}</td>
+                    <td>${fotoDespuesHTML}</td>
                     <td>${formatDate(reporte.fecha_reporte)}</td>
                     <td>${tiempoReparacion}</td>
                     <td><span class="status-badge ${obtenerEstadoClase(reporte.estado)}">${reporte.estado}</span></td>
@@ -2350,6 +2409,64 @@
                 `;
                 tbody.appendChild(tr);
             });
+        }
+        
+        function verDetalleReporte(ot) {
+            const reporte = reports.find(r => r.ot === ot);
+            if (!reporte) return;
+            
+            const modalContent = document.getElementById('modal-content');
+            modalContent.innerHTML = `
+                <h3 style="margin-bottom: 20px;"><i class="fas fa-info-circle"></i> Detalle del Reporte ${ot}</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <h4 style="color: var(--primary); margin-bottom: 10px;">Información Básica</h4>
+                        <p><strong>Reportado por:</strong> ${reporte.reportado_por}</p>
+                        <p><strong>Fecha:</strong> ${formatDateTime(reporte.fecha_reporte)}</p>
+                        <p><strong>Sector:</strong> ${reporte.sector}</p>
+                        <p><strong>Ubicación:</strong> ${reporte.ubicacion_especifica}</p>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--primary); margin-bottom: 10px;">Clasificación</h4>
+                        <p><strong>Tipo de riesgo:</strong> ${reporte.tipo_riesgo}</p>
+                        <p><strong>Nivel de riesgo:</strong> <span class="risk-badge ${obtenerRiesgoClase(reporte.nivel_riesgo)}">${reporte.nivel_riesgo}</span></p>
+                        <p><strong>Estado:</strong> <span class="status-badge ${obtenerEstadoClase(reporte.estado)}">${reporte.estado}</span></p>
+                        <p><strong>Prioridad:</strong> ${reporte.prioridad}</p>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: var(--primary); margin-bottom: 10px;">Descripción</h4>
+                    <p style="background: #f8f9fa; padding: 15px; border-radius: 6px;">${reporte.descripcion}</p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: var(--primary); margin-bottom: 10px;">Fotos</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h5 style="color: #3498db;">Antes</h5>
+                            ${reporte.fotos_antes && reporte.fotos_antes.length > 0 ? 
+                                `<img src="${reporte.fotos_antes[0]}" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px;">` : 
+                                '<p style="color: #95a5a6; text-align: center;">No hay fotos</p>'}
+                        </div>
+                        <div>
+                            <h5 style="color: #27ae60;">Después</h5>
+                            ${reporte.fotos_despues && reporte.fotos_despues.length > 0 ? 
+                                `<img src="${reporte.fotos_despues[0]}" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px;">` : 
+                                '<p style="color: #95a5a6; text-align: center;">No hay fotos</p>'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="cerrarModal()">
+                        <i class="fas fa-times"></i> Cerrar
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('conditionModal').style.display = 'flex';
         }
         
         async function cambiarEstado(ot, nuevoEstado) {
@@ -2400,19 +2517,38 @@
             const modalContent = document.getElementById('modal-content');
             modalContent.innerHTML = `
                 <h3 style="margin-bottom: 20px;"><i class="fas fa-check-circle"></i> Marcar como Reparado</h3>
+                
                 <div class="form-group">
                     <label class="required">Reparado por *</label>
                     <input type="text" id="reparado-por" class="form-control" placeholder="Nombre del técnico">
                 </div>
+                
                 <div class="form-group">
                     <label>Fecha de Reparación</label>
                     <input type="datetime-local" id="fecha-reparacion" class="form-control" value="${new Date().toISOString().slice(0, 16)}">
                 </div>
+                
                 <div class="form-group">
                     <label>Observaciones de la Reparación</label>
                     <textarea id="obs-reparacion" class="form-control" rows="3" placeholder="Detalles de la reparación realizada..."></textarea>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                
+                <!-- NUEVA SECCIÓN PARA FOTOS DESPUÉS -->
+                <div class="form-group">
+                    <label><i class="fas fa-camera"></i> Foto después de la reparación</label>
+                    <div class="image-upload" onclick="document.getElementById('foto-despues-input').click()">
+                        <i class="fas fa-camera fa-2x" style="color: #27ae60; margin-bottom: 10px;"></i>
+                        <p>Haga clic para subir fotos de la reparación</p>
+                        <p style="font-size: 12px; color: #7f8c8d;">Muestre el problema ya solucionado</p>
+                    </div>
+                    <input type="file" id="foto-despues-input" accept="image/*" multiple style="display: none;" onchange="previewRepairImages(event)">
+                    
+                    <div class="image-preview" id="repair-image-preview">
+                        <!-- Vista previa de imágenes de reparación -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                     <button class="btn btn-success" onclick="confirmarReparacion('${ot}')">
                         <i class="fas fa-check"></i> Confirmar Reparación
                     </button>
@@ -2425,6 +2561,31 @@
             document.getElementById('conditionModal').style.display = 'flex';
         }
         
+        function previewRepairImages(event) {
+            const preview = document.getElementById('repair-image-preview');
+            preview.innerHTML = '';
+            
+            const files = event.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-preview-item';
+                    imgContainer.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <button class="remove-image" onclick="removerImagenReparacion(this)">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    preview.appendChild(imgContainer);
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        }
+        
         async function confirmarReparacion(ot) {
             const reparadoPor = document.getElementById('reparado-por').value;
             if (!reparadoPor) {
@@ -2435,17 +2596,36 @@
             showLoading(true, 'Completando reparación...');
             
             try {
-                const reporte = reports.find(r => r.ot === ot);
+                // Subir fotos "después"
+                const imagePreviews = document.querySelectorAll('#repair-image-preview .image-preview-item img');
+                const fotosDespuesUrls = [];
+                
+                for (const img of imagePreviews) {
+                    const blob = await (await fetch(img.src)).blob();
+                    const file = new File([blob], `reparacion_${ot}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                    
+                    const result = await subirFotoASupabase(file, ot, 'despues');
+                    if (result.success) {
+                        fotosDespuesUrls.push(result.url);
+                    }
+                }
                 
                 // Actualizar en Supabase
+                const updateData = {
+                    estado: 'Reparado',
+                    reparado_por: reparadoPor,
+                    fecha_reparacion: document.getElementById('fecha-reparacion').value || obtenerTimestamp(),
+                    observaciones_reparacion: document.getElementById('obs-reparacion').value
+                };
+                
+                // Agregar fotos "después" si hay
+                if (fotosDespuesUrls.length > 0) {
+                    updateData.fotos_despues = fotosDespuesUrls;
+                }
+                
                 const { error: errorReporte } = await supabaseClient
                     .from('condiciones_inseguras')
-                    .update({
-                        estado: 'Reparado',
-                        reparado_por: reparadoPor,
-                        fecha_reparacion: document.getElementById('fecha-reparacion').value || obtenerTimestamp(),
-                        observaciones_reparacion: document.getElementById('obs-reparacion').value
-                    })
+                    .update(updateData)
                     .eq('ot', ot);
                 
                 if (errorReporte) throw errorReporte;
@@ -2466,10 +2646,12 @@
                 if (errorMovimiento) throw errorMovimiento;
                 
                 // Actualizar localmente
+                const reporte = reports.find(r => r.ot === ot);
                 if (reporte) {
                     reporte.estado = 'Reparado';
                     reporte.reparado_por = reparadoPor;
                     reporte.fecha_reparacion = movimientoReparacion.fecha_movimiento;
+                    reporte.fotos_despues = fotosDespuesUrls;
                 }
                 
                 movements.push(movimientoReparacion);
@@ -2498,6 +2680,39 @@
         }
         
         // ==============================================
+        // FUNCIÓN PARA FILTRAR REPORTES POR PERÍODO
+        // ==============================================
+        function filtrarReportesPorPeriodo(periodo) {
+            const hoy = new Date();
+            const fechaLimite = new Date();
+            
+            switch(periodo) {
+                case '7d':
+                    fechaLimite.setDate(hoy.getDate() - 7);
+                    break;
+                case '30d':
+                    fechaLimite.setDate(hoy.getDate() - 30);
+                    break;
+                case '90d':
+                    fechaLimite.setDate(hoy.getDate() - 90);
+                    break;
+                case '180d':
+                    fechaLimite.setDate(hoy.getDate() - 180);
+                    break;
+                case '1y':
+                    fechaLimite.setDate(hoy.getDate() - 365);
+                    break;
+                default:
+                    return reports; // Todos
+            }
+            
+            return reports.filter(reporte => {
+                const fechaReporte = new Date(reporte.fecha_reporte);
+                return fechaReporte >= fechaLimite;
+            });
+        }
+        
+        // ==============================================
         // FUNCIONES PARA ANÁLISIS
         // ==============================================
         function cargarAnalisis() {
@@ -2509,11 +2724,48 @@
             cargarTopSectores();
         }
         
+        function actualizarAnalisis() {
+            actualizarKPIsAnalisis();
+            actualizarGraficoSector();
+            actualizarGraficoRiesgo();
+            actualizarGraficoTendencia();
+            actualizarGraficoTiempoReparacion();
+            cargarTopSectores();
+            
+            mostrarNotificacion('✅ Análisis actualizado', 'success');
+        }
+        
         function actualizarKPIsAnalisis() {
-            const riesgosCriticos = reports.filter(r => r.nivel_riesgo === 'Crítico').length;
-            const riesgosAltos = reports.filter(r => r.nivel_riesgo === 'Alto').length;
-            const tiempoPromedio = calcularTiempoPromedioReparacion();
-            const cumplimiento = calcularTasaCumplimiento();
+            const periodo = document.getElementById('analysis-period').value;
+            const reportesFiltrados = periodo === 'all' ? reports : filtrarReportesPorPeriodo(periodo);
+            
+            const riesgosCriticos = reportesFiltrados.filter(r => r.nivel_riesgo === 'Crítico').length;
+            const riesgosAltos = reportesFiltrados.filter(r => r.nivel_riesgo === 'Alto').length;
+            
+            // Calcular tiempo promedio solo con reportes reparados en el período
+            const reparadosPeriodo = reportesFiltrados.filter(r => r.estado === 'Reparado');
+            let tiempoPromedio = 0;
+            if (reparadosPeriodo.length > 0) {
+                const totalDias = reparadosPeriodo.reduce((sum, reporte) => {
+                    const inicio = new Date(reporte.fecha_reporte);
+                    const fin = new Date(reporte.fecha_reparacion);
+                    const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24));
+                    return sum + dias;
+                }, 0);
+                tiempoPromedio = Math.round(totalDias / reparadosPeriodo.length);
+            }
+            
+            // Calcular tasa de cumplimiento
+            let cumplimiento = 0;
+            if (reparadosPeriodo.length > 0) {
+                const cumplidos = reparadosPeriodo.filter(r => {
+                    if (!r.fecha_estimada_reparacion || !r.fecha_reparacion) return false;
+                    const estimada = new Date(r.fecha_estimada_reparacion);
+                    const real = new Date(r.fecha_reparacion);
+                    return real <= estimada;
+                });
+                cumplimiento = Math.round((cumplidos.length / reparadosPeriodo.length) * 100);
+            }
             
             document.getElementById('critical-risks').textContent = riesgosCriticos;
             document.getElementById('high-risks').textContent = riesgosAltos;
@@ -2529,8 +2781,11 @@
                 sectorChart.destroy();
             }
             
+            const periodo = document.getElementById('analysis-period').value;
+            const reportesFiltrados = periodo === 'all' ? reports : filtrarReportesPorPeriodo(periodo);
+            
             const sectores = {};
-            reports.forEach(reporte => {
+            reportesFiltrados.forEach(reporte => {
                 if (!sectores[reporte.sector]) {
                     sectores[reporte.sector] = 0;
                 }
@@ -2593,9 +2848,12 @@
                 riskLevelChart.destroy();
             }
             
+            const periodo = document.getElementById('analysis-period').value;
+            const reportesFiltrados = periodo === 'all' ? reports : filtrarReportesPorPeriodo(periodo);
+            
             const niveles = ['Crítico', 'Alto', 'Medio', 'Bajo'];
             const data = niveles.map(nivel => 
-                reports.filter(r => r.nivel_riesgo === nivel).length
+                reportesFiltrados.filter(r => r.nivel_riesgo === nivel).length
             );
             
             riskLevelChart = new Chart(ctx, {
@@ -2709,8 +2967,11 @@
                 repairTimeChart.destroy();
             }
             
+            const periodo = document.getElementById('analysis-period').value;
+            const reportesFiltrados = periodo === 'all' ? reports : filtrarReportesPorPeriodo(periodo);
+            
             const tiempos = ['< 1 día', '1-3 días', '4-7 días', '1-2 semanas', '> 2 semanas'];
-            const reparados = reports.filter(r => r.estado === 'Reparado' && r.fecha_reparacion && r.fecha_reporte);
+            const reparados = reportesFiltrados.filter(r => r.estado === 'Reparado' && r.fecha_reparacion && r.fecha_reporte);
             
             const data = tiempos.map(rango => {
                 const reparadosRango = reparados.filter(r => {
@@ -2778,8 +3039,11 @@
             
             tbody.innerHTML = '';
             
+            const periodo = document.getElementById('analysis-period').value;
+            const reportesFiltrados = periodo === 'all' ? reports : filtrarReportesPorPeriodo(periodo);
+            
             const sectores = {};
-            reports.forEach(reporte => {
+            reportesFiltrados.forEach(reporte => {
                 if (!sectores[reporte.sector]) {
                     sectores[reporte.sector] = {
                         total: 0,
@@ -2828,8 +3092,220 @@
             });
         }
         
-        function generarReportePDF() {
-            alert('📄 Generando reporte PDF completo...');
+        async function generarReportePDF() {
+            showLoading(true, 'Generando reporte PDF...');
+            
+            try {
+                // Crear contenido del PDF
+                const periodo = document.getElementById('analysis-period').value;
+                const tipoAnalisis = document.getElementById('analysis-type').value;
+                const fechaGeneracion = new Date().toLocaleString('es-ES');
+                
+                // Obtener estadísticas actuales
+                const reportesFiltrados = periodo === 'all' ? reports : filtrarReportesPorPeriodo(periodo);
+                const totalReportes = reportesFiltrados.length;
+                const pendientes = reportesFiltrados.filter(r => r.estado === 'Pendiente').length;
+                const enProceso = reportesFiltrados.filter(r => r.estado === 'En Proceso').length;
+                const reparados = reportesFiltrados.filter(r => r.estado === 'Reparado').length;
+                const diasSinAccidentes = calcularDiasSinAccidentes();
+                
+                // Crear ventana para imprimir
+                const ventanaImpresion = window.open('', '_blank');
+                ventanaImpresion.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="es">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Reporte de Análisis - Condiciones Inseguras</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+                            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2c3e50; padding-bottom: 20px; }
+                            .header h1 { color: #2c3e50; margin-bottom: 5px; }
+                            .header .subtitle { color: #7f8c8d; font-size: 14px; }
+                            .info-section { margin-bottom: 30px; }
+                            .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+                            .info-card { background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #2c3e50; }
+                            .info-card h3 { margin: 0 0 10px 0; font-size: 16px; color: #2c3e50; }
+                            .info-card .value { font-size: 24px; font-weight: bold; }
+                            .table-container { margin: 20px 0; overflow-x: auto; }
+                            table { width: 100%; border-collapse: collapse; }
+                            th { background: #2c3e50; color: white; padding: 12px; text-align: left; }
+                            td { padding: 10px; border-bottom: 1px solid #eee; }
+                            tr:hover { background: #f5f5f5; }
+                            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #7f8c8d; font-size: 12px; }
+                            .chart-placeholder { background: #f9f9f9; padding: 20px; text-align: center; border: 1px dashed #ddd; margin: 20px 0; }
+                            .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+                            .badge-danger { background: #f8d7da; color: #721c24; }
+                            .badge-warning { background: #fff3cd; color: #856404; }
+                            .badge-success { background: #d4edda; color: #155724; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h1>Reporte de Análisis - Condiciones Inseguras</h1>
+                            <p class="subtitle">Período: ${periodo} | Generado: ${fechaGeneracion}</p>
+                        </div>
+                        
+                        <div class="info-section">
+                            <h2>Resumen Ejecutivo</h2>
+                            <div class="info-grid">
+                                <div class="info-card">
+                                    <h3>Total Reportes</h3>
+                                    <div class="value">${totalReportes}</div>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Pendientes</h3>
+                                    <div class="value">${pendientes}</div>
+                                </div>
+                                <div class="info-card">
+                                    <h3>En Proceso</h3>
+                                    <div class="value">${enProceso}</div>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Reparados</h3>
+                                    <div class="value">${reparados}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-grid">
+                                <div class="info-card">
+                                    <h3>Días sin Accidentes</h3>
+                                    <div class="value">${diasSinAccidentes}</div>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Riesgos Críticos</h3>
+                                    <div class="value">${reportesFiltrados.filter(r => r.nivel_riesgo === 'Crítico').length}</div>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Tiempo Promedio</h3>
+                                    <div class="value">${calcularTiempoPromedioReparacion()} días</div>
+                                </div>
+                                <div class="info-card">
+                                    <h3>Cumplimiento</h3>
+                                    <div class="value">${calcularTasaCumplimiento()}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-section">
+                            <h2>Distribución por Sector</h2>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Sector</th>
+                                            <th>Total</th>
+                                            <th>Pendientes</th>
+                                            <th>En Proceso</th>
+                                            <th>Reparados</th>
+                                            <th>% del Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `);
+                
+                // Agregar datos por sector
+                const sectores = {};
+                reportesFiltrados.forEach(reporte => {
+                    if (!sectores[reporte.sector]) {
+                        sectores[reporte.sector] = { total: 0, pendientes: 0, enProceso: 0, reparados: 0 };
+                    }
+                    sectores[reporte.sector].total++;
+                    if (reporte.estado === 'Pendiente') sectores[reporte.sector].pendientes++;
+                    if (reporte.estado === 'En Proceso') sectores[reporte.sector].enProceso++;
+                    if (reporte.estado === 'Reparado') sectores[reporte.sector].reparados++;
+                });
+                
+                Object.entries(sectores).forEach(([sector, datos]) => {
+                    const porcentaje = ((datos.total / totalReportes) * 100).toFixed(1);
+                    ventanaImpresion.document.write(`
+                        <tr>
+                            <td>${sector}</td>
+                            <td>${datos.total}</td>
+                            <td>${datos.pendientes}</td>
+                            <td>${datos.enProceso}</td>
+                            <td>${datos.reparados}</td>
+                            <td>${porcentaje}%</td>
+                        </tr>
+                    `);
+                });
+                
+                ventanaImpresion.document.write(`
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="info-section">
+                            <h2>Top 5 Reportes Pendientes (Riesgo Crítico/Alto)</h2>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>OT</th>
+                                            <th>Descripción</th>
+                                            <th>Sector</th>
+                                            <th>Riesgo</th>
+                                            <th>Días Pendiente</th>
+                                            <th>Prioridad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                `);
+                
+                // Agregar reportes críticos pendientes
+                const criticosPendientes = reportesFiltrados
+                    .filter(r => r.estado === 'Pendiente' && (r.nivel_riesgo === 'Crítico' || r.nivel_riesgo === 'Alto'))
+                    .sort((a, b) => new Date(b.fecha_reporte) - new Date(a.fecha_reporte))
+                    .slice(0, 5);
+                
+                criticosPendientes.forEach(reporte => {
+                    const fechaReporte = new Date(reporte.fecha_reporte);
+                    const hoy = new Date();
+                    const diasPendiente = Math.floor((hoy - fechaReporte) / (1000 * 60 * 60 * 24));
+                    
+                    ventanaImpresion.document.write(`
+                        <tr>
+                            <td><strong>${reporte.ot}</strong></td>
+                            <td>${reporte.descripcion.substring(0, 80)}${reporte.descripcion.length > 80 ? '...' : ''}</td>
+                            <td>${reporte.sector}</td>
+                            <td><span class="badge ${reporte.nivel_riesgo === 'Crítico' ? 'badge-danger' : 'badge-warning'}">${reporte.nivel_riesgo}</span></td>
+                            <td>${diasPendiente} días</td>
+                            <td>${reporte.prioridad || 'Media'}</td>
+                        </tr>
+                    `);
+                });
+                
+                ventanaImpresion.document.write(`
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="footer">
+                            <p>Sistema de Gestión de Condiciones Inseguras - Seguridad Industrial</p>
+                            <p>Este reporte fue generado automáticamente el ${fechaGeneracion}</p>
+                            <p>© ${new Date().getFullYear()} - Versión 3.0</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                
+                ventanaImpresion.document.close();
+                
+                // Esperar a que cargue y luego imprimir
+                setTimeout(() => {
+                    ventanaImpresion.print();
+                    mostrarNotificacion('✅ Reporte PDF generado. Abriendo impresora...', 'success');
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error generando PDF:', error);
+                alert('❌ Error al generar el PDF: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
         }
         
         // ==============================================
@@ -2939,7 +3415,7 @@
                     }
                     
                     showLoading(false);
-                    alert('✅ Datos actualizados desde almacenamiento local');
+                    mostrarNotificacion('✅ Datos actualizados desde almacenamiento local', 'success');
                 }
             }, 500);
         }
@@ -2959,7 +3435,8 @@
             };
             
             accidents.push(nuevoAccidente);
-            localStorage.setItem('accidentes_data', JSON.stringify(accidents));
+            localStorage.setItem('ultimo_accidente_dias', '0'); // Reiniciar contador
+            guardarDatosLocales();
             
             alert('⚠️ Accidente registrado. Se reiniciará el contador de días sin accidentes.');
             actualizarDiasSinAccidentes();
@@ -2989,6 +3466,24 @@
                     reports = datos.reports || [];
                     movements = datos.movements || [];
                     accidents = datos.accidents || [];
+                    
+                    // Si no hay accidentes pero había un valor guardado
+                    if (accidents.length === 0) {
+                        const diasGuardados = localStorage.getItem('ultimo_accidente_dias');
+                        if (diasGuardados && diasGuardados !== "365") {
+                            // Crear un accidente ficticio para mantener el contador
+                            const hoy = new Date();
+                            const fechaAccidente = new Date(hoy);
+                            fechaAccidente.setDate(fechaAccidente.getDate() - parseInt(diasGuardados));
+                            
+                            accidents.push({
+                                fecha: fechaAccidente.toISOString(),
+                                descripcion: 'Último accidente registrado',
+                                gravedad: 'Moderada',
+                                sector: 'General'
+                            });
+                        }
+                    }
                 } else {
                     reports = [];
                     movements = [];
@@ -3078,131 +3573,195 @@
         }
         
         // ==============================================
+        // FUNCIONES DE NOTIFICACIÓN
+        // ==============================================
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const notificacion = document.createElement('div');
+            notificacion.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                animation: slideIn 0.3s ease;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            `;
+            
+            if (tipo === 'success') {
+                notificacion.style.backgroundColor = '#27ae60';
+            } else if (tipo === 'error') {
+                notificacion.style.backgroundColor = '#e74c3c';
+            } else if (tipo === 'warning') {
+                notificacion.style.backgroundColor = '#f39c12';
+            } else {
+                notificacion.style.backgroundColor = '#3498db';
+            }
+            
+            notificacion.innerHTML = `
+                <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-triangle' : tipo === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${mensaje}</span>
+            `;
+            
+            document.body.appendChild(notificacion);
+            
+            setTimeout(() => {
+                notificacion.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (notificacion.parentNode) {
+                        notificacion.parentNode.removeChild(notificacion);
+                    }
+                }, 300);
+            }, 5000);
+            
+            if (!document.getElementById('notification-styles')) {
+                const style = document.createElement('style');
+                style.id = 'notification-styles';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                    @keyframes slideOut {
+                        from { transform: translateX(0); opacity: 1; }
+                        to { transform: translateX(100%); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+        
+        // ==============================================
         // INICIALIZACIÓN
         // ==============================================
         async function inicializarApp() {
-    console.log('🚀 Inicializando Sistema de Condiciones Inseguras...');
-    showLoading(true, 'Iniciando sistema...');
-    
-    try {
-        // 1. Crear cliente Supabase
-        supabaseClient = supabase.createClient(
-            MIS_CREDENCIALES.URL,
-            MIS_CREDENCIALES.API_KEY,
-            {
-                auth: {
-                    persistSession: false,
-                    autoRefreshToken: false,
-                    detectSessionInUrl: false
-                },
-                global: {
-                    headers: {
-                        'apikey': MIS_CREDENCIALES.API_KEY,
-                        'Authorization': `Bearer ${MIS_CREDENCIALES.API_KEY}`
+            console.log('🚀 Inicializando Sistema de Condiciones Inseguras...');
+            showLoading(true, 'Iniciando sistema...');
+            
+            try {
+                // 1. Crear cliente Supabase
+                supabaseClient = supabase.createClient(
+                    MIS_CREDENCIALES.URL,
+                    MIS_CREDENCIALES.API_KEY,
+                    {
+                        auth: {
+                            persistSession: false,
+                            autoRefreshToken: false,
+                            detectSessionInUrl: false
+                        },
+                        global: {
+                            headers: {
+                                'apikey': MIS_CREDENCIALES.API_KEY,
+                                'Authorization': `Bearer ${MIS_CREDENCIALES.API_KEY}`
+                            }
+                        }
+                    }
+                );
+                
+                console.log('🔗 Cliente Supabase creado');
+                
+                // 2. Probar conexión simple
+                console.log('🔄 Probando conexión con Supabase...');
+                
+                try {
+                    // Primero intentar una consulta simple
+                    const { data, error } = await supabaseClient
+                        .from('condiciones_inseguras')
+                        .select('*')
+                        .limit(1);
+                    
+                    if (error) {
+                        if (error.message.includes('does not exist')) {
+                            console.log('📋 Tabla no existe, pero conexión OK');
+                            updateStatusIndicator('connected', 'Conectado a Supabase');
+                            CONFIG.offlineMode = false;
+                        } else if (error.message.includes('row-level security')) {
+                            console.log('🔐 Error RLS detectado, pero conexión funciona');
+                            updateStatusIndicator('connected', 'Conectado (RLS necesita ajuste)');
+                            CONFIG.offlineMode = false;
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        console.log('✅ Conexión exitosa con Supabase');
+                        console.log(`📊 Datos encontrados: ${data ? data.length : 0} registros`);
+                        updateStatusIndicator('connected', 'Conectado a Supabase');
+                        CONFIG.offlineMode = false;
+                    }
+                } catch (testError) {
+                    console.log('⚠️  Error en prueba inicial:', testError.message);
+                    
+                    // Intentar otra prueba más simple
+                    try {
+                        const { data: testData, error: testError2 } = await supabaseClient
+                            .from('sectores')
+                            .select('*')
+                            .limit(1);
+                        
+                        if (!testError2) {
+                            console.log('✅ Conexión funciona con tabla sectores');
+                            updateStatusIndicator('connected', 'Conectado a Supabase');
+                            CONFIG.offlineMode = false;
+                        } else {
+                            throw testError;
+                        }
+                    } catch {
+                        console.log('🔌 Modo offline - Usando datos locales');
+                        updateStatusIndicator('disconnected', 'Modo Offline');
+                        CONFIG.offlineMode = true;
                     }
                 }
-            }
-        );
-        
-        console.log('🔗 Cliente Supabase creado');
-        
-        // 2. Probar conexión simple
-        console.log('🔄 Probando conexión con Supabase...');
-        
-        try {
-            // Primero intentar una consulta simple
-            const { data, error } = await supabaseClient
-                .from('condiciones_inseguras')
-                .select('*')
-                .limit(1);
-            
-            if (error) {
-                if (error.message.includes('does not exist')) {
-                    console.log('📋 Tabla no existe, pero conexión OK');
-                    updateStatusIndicator('connected', 'Conectado a Supabase');
-                    CONFIG.offlineMode = false;
-                } else if (error.message.includes('row-level security')) {
-                    console.log('🔐 Error RLS detectado, pero conexión funciona');
-                    updateStatusIndicator('connected', 'Conectado (RLS necesita ajuste)');
-                    CONFIG.offlineMode = false;
-                } else {
-                    throw error;
-                }
-            } else {
-                console.log('✅ Conexión exitosa con Supabase');
-                console.log(`📊 Datos encontrados: ${data ? data.length : 0} registros`);
-                updateStatusIndicator('connected', 'Conectado a Supabase');
-                CONFIG.offlineMode = false;
-            }
-        } catch (testError) {
-            console.log('⚠️  Error en prueba inicial:', testError.message);
-            
-            // Intentar otra prueba más simple
-            try {
-                const { data: testData, error: testError2 } = await supabaseClient
-                    .from('sectores')
-                    .select('*')
-                    .limit(1);
                 
-                if (!testError2) {
-                    console.log('✅ Conexión funciona con tabla sectores');
-                    updateStatusIndicator('connected', 'Conectado a Supabase');
-                    CONFIG.offlineMode = false;
-                } else {
-                    throw testError;
+                // 3. Cargar datos locales primero
+                cargarDatosLocales();
+                console.log(`📊 Datos locales cargados: ${reports.length} reportes`);
+                
+                // 4. Si hay conexión, sincronizar
+                if (!CONFIG.offlineMode) {
+                    try {
+                        await sincronizarDatos();
+                    } catch (syncError) {
+                        console.log('⚠️  Error en sincronización:', syncError.message);
+                        CONFIG.offlineMode = true;
+                    }
                 }
-            } catch {
-                console.log('🔌 Modo offline - Usando datos locales');
-                updateStatusIndicator('disconnected', 'Modo Offline');
-                CONFIG.offlineMode = true;
+                
+                // 5. Configurar interfaz
+                configurarInterfaz();
+                
+                // 6. Mostrar dashboard
+                cambiarPagina('dashboard');
+                
+                CONFIG.initialized = true;
+                console.log('✅ Sistema inicializado correctamente');
+                
+                // Mostrar estado final
+                if (CONFIG.offlineMode) {
+                    mostrarNotificacion('⚠️ Modo offline activado', 'warning');
+                } else {
+                    mostrarNotificacion('✅ Sistema conectado a Supabase', 'success');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error crítico en inicialización:', error);
+                updateStatusIndicator('error', 'Error de inicialización');
+                
+                // Cargar datos locales aunque falle la conexión
+                cargarDatosLocales();
+                configurarInterfaz();
+                cambiarPagina('dashboard');
+                
+                mostrarNotificacion('⚠️ Error de conexión. Modo offline activado.', 'error');
+                
+            } finally {
+                showLoading(false);
             }
         }
-        
-        // 3. Cargar datos locales primero
-        cargarDatosLocales();
-        console.log(`📊 Datos locales cargados: ${reports.length} reportes`);
-        
-        // 4. Si hay conexión, sincronizar
-        if (!CONFIG.offlineMode) {
-            try {
-                await sincronizarDatos();
-            } catch (syncError) {
-                console.log('⚠️  Error en sincronización:', syncError.message);
-                CONFIG.offlineMode = true;
-            }
-        }
-        
-        // 5. Configurar interfaz
-        configurarInterfaz();
-        
-        // 6. Mostrar dashboard
-        cambiarPagina('dashboard');
-        
-        CONFIG.initialized = true;
-        console.log('✅ Sistema inicializado correctamente');
-        
-        // Mostrar estado final
-        if (CONFIG.offlineMode) {
-            mostrarNotificacion('⚠️ Modo offline activado', 'warning');
-        } else {
-            mostrarNotificacion('✅ Sistema conectado a Supabase', 'success');
-        }
-        
-    } catch (error) {
-        console.error('❌ Error crítico en inicialización:', error);
-        updateStatusIndicator('error', 'Error de inicialización');
-        
-        // Cargar datos locales aunque falle la conexión
-        cargarDatosLocales();
-        configurarInterfaz();
-        cambiarPagina('dashboard');
-        
-        mostrarNotificacion('⚠️ Error de conexión. Modo offline activado.', 'error');
-        
-    } finally {
-        showLoading(false);
-    }
-}
         
         function configurarInterfaz() {
             // Configurar navegación
@@ -3246,234 +3805,39 @@
             document.getElementById('filter-sector')?.addEventListener('change', cargarHistorial);
             document.getElementById('filter-risk-level')?.addEventListener('change', cargarHistorial);
             
+            // Configurar actualización automática del gráfico de evolución
+            document.getElementById('time-period')?.addEventListener('change', function() {
+                actualizarGraficoEvolucion();
+                mostrarNotificacion('✅ Gráfico actualizado automáticamente', 'success');
+            });
+            
+            // Configurar actualización automática de análisis
+            document.getElementById('analysis-period')?.addEventListener('change', function() {
+                actualizarAnalisis();
+                mostrarNotificacion('✅ Análisis actualizado con el nuevo período', 'success');
+            });
+            
+            document.getElementById('analysis-type')?.addEventListener('change', function() {
+                actualizarAnalisis();
+                mostrarNotificacion('✅ Tipo de análisis actualizado', 'success');
+            });
+            
             // Configurar fecha de reporte automática
             const fechaReporte = document.getElementById('report-date');
             if (fechaReporte && !fechaReporte.value) {
                 fechaReporte.value = new Date().toISOString().slice(0, 16);
             }
             
-            // Configurar fecha estimada de reparación (3 días por defecto)
+            // Configurar fecha estimada de reparación (7 días por defecto)
             const fechaEstimada = document.getElementById('estimated-repair-date');
             if (fechaEstimada && !fechaEstimada.value) {
                 const hoy = new Date();
-                hoy.setDate(hoy.getDate() + 3);
+                hoy.setDate(hoy.getDate() + 7);
                 fechaEstimada.value = hoy.toISOString().split('T')[0];
+                fechaEstimada.min = new Date().toISOString().split('T')[0];
             }
         }
         
-        // ==============================================
-        // FUNCIONES DE NOTIFICACIÓN
-        // ==============================================
-        function mostrarNotificacion(mensaje, tipo = 'info') {
-            const notificacion = document.createElement('div');
-            notificacion.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 15px 20px;
-                border-radius: 8px;
-                color: white;
-                font-weight: 600;
-                z-index: 10000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                animation: slideIn 0.3s ease;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            `;
-            
-            if (tipo === 'success') {
-                notificacion.style.backgroundColor = '#27ae60';
-            } else if (tipo === 'error') {
-                notificacion.style.backgroundColor = '#e74c3c';
-            } else {
-                notificacion.style.backgroundColor = '#3498db';
-            }
-            
-            notificacion.innerHTML = `
-                <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                <span>${mensaje}</span>
-            `;
-            
-            document.body.appendChild(notificacion);
-            
-            setTimeout(() => {
-                notificacion.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => {
-                    if (notificacion.parentNode) {
-                        notificacion.parentNode.removeChild(notificacion);
-                    }
-                }, 300);
-            }, 5000);
-            
-            if (!document.getElementById('notification-styles')) {
-                const style = document.createElement('style');
-                style.id = 'notification-styles';
-                style.textContent = `
-                    @keyframes slideIn {
-                        from { transform: translateX(100%); opacity: 0; }
-                        to { transform: translateX(0); opacity: 1; }
-                    }
-                    @keyframes slideOut {
-                        from { transform: translateX(0); opacity: 1; }
-                        to { transform: translateX(100%); opacity: 0; }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        }
-        // ==============================================
-// FUNCIÓN PARA PROBAR RLS (AGREGAR AQUÍ)
-// ==============================================
-
-async function probarRLS() {
-    try {
-        console.log('🔍 Probando políticas RLS...');
-        
-        // 1. Probar INSERT
-        console.log('🔄 Probando INSERT...');
-        const testData = {
-            ot: `TEST-${Date.now()}`,
-            reportado_por: 'Test RLS',
-            descripcion: 'Prueba de políticas RLS',
-            sector: 'Producción',
-            ubicacion_especifica: 'Área de prueba',
-            tipo_riesgo: 'Mecánico',
-            nivel_riesgo: 'Bajo',
-            fecha_estimada_reparacion: new Date().toISOString().split('T')[0],
-            estado: 'Pendiente'
-        };
-        
-        const { data: insertData, error: insertError } = await supabaseClient
-            .from('condiciones_inseguras')
-            .insert([testData])
-            .select();
-        
-        if (insertError) {
-            console.error('❌ Error en INSERT:', insertError.message);
-            return { success: false, error: 'INSERT: ' + insertError.message };
-        }
-        
-        console.log('✅ INSERT exitoso:', insertData);
-        
-        // 2. Probar SELECT
-        console.log('🔄 Probando SELECT...');
-        const { data: selectData, error: selectError } = await supabaseClient
-            .from('condiciones_inseguras')
-            .select('*')
-            .eq('ot', testData.ot);
-        
-        if (selectError) {
-            console.error('❌ Error en SELECT:', selectError.message);
-            return { success: false, error: 'SELECT: ' + selectError.message };
-        }
-        
-        console.log('✅ SELECT exitoso:', selectData.length, 'registros');
-        
-        // 3. Probar UPDATE
-        console.log('🔄 Probando UPDATE...');
-        const { data: updateData, error: updateError } = await supabaseClient
-            .from('condiciones_inseguras')
-            .update({ estado: 'En Proceso' })
-            .eq('ot', testData.ot)
-            .select();
-        
-        if (updateError) {
-            console.error('❌ Error en UPDATE:', updateError.message);
-            return { success: false, error: 'UPDATE: ' + updateError.message };
-        }
-        
-        console.log('✅ UPDATE exitoso:', updateData);
-        
-        // 4. Limpiar datos de prueba
-        console.log('🔄 Limpiando datos de prueba...');
-        const { error: deleteError } = await supabaseClient
-            .from('condiciones_inseguras')
-            .delete()
-            .eq('ot', testData.ot);
-        
-        if (deleteError) {
-            console.error('⚠️  Error limpiando datos:', deleteError.message);
-        } else {
-            console.log('✅ Datos de prueba eliminados');
-        }
-        
-        console.log('🎉 Todas las pruebas RLS PASARON!');
-        return { success: true, message: 'Políticas RLS funcionando correctamente' };
-        
-    } catch (error) {
-        console.error('❌ Error en prueba RLS:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Función para agregar botón de prueba
-function agregarBotonPruebaRLS() {
-    // Verificar si ya existe el botón
-    if (document.getElementById('btn-prueba-rls')) return;
-    
-    const btn = document.createElement('button');
-    btn.id = 'btn-prueba-rls';
-    btn.innerHTML = '🔐 Probar RLS';
-    btn.style.cssText = `
-        position: fixed;
-        bottom: 120px;
-        right: 20px;
-        z-index: 1000;
-        padding: 10px 15px;
-        background: #9b59b6;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: bold;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    `;
-    
-    btn.onclick = async () => {
-        showLoading(true, 'Probando políticas RLS...');
-        const result = await probarRLS();
-        showLoading(false);
-        
-        if (result.success) {
-            alert('✅ ' + result.message);
-            mostrarNotificacion('✅ RLS funcionando correctamente', 'success');
-        } else {
-            alert('❌ ' + result.error);
-            mostrarNotificacion('❌ Error en RLS: ' + result.error, 'error');
-        }
-    };
-    
-    document.body.appendChild(btn);
-    console.log('✅ Botón de prueba RLS agregado');
-}
-
-// También agrega esta función de prueba directa para consola
-window.pruebaRLS = probarRLS; // Hacerla disponible en consola
-window.probarConexion = async function() {
-    console.log('🔍 Probando conexión completa...');
-    const result = await probarRLS();
-    console.log(result.success ? '✅ ' + result.message : '❌ ' + result.error);
-    return result;
-};
-
-// ==============================================
-// INICIALIZAR AL CARGAR LA PÁGINA
-// ==============================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 Página cargada, iniciando aplicación...');
-    inicializarApp();
-    
-    // Agregar botón después de 5 segundos
-    setTimeout(() => {
-        if (supabaseClient && !CONFIG.offlineMode) {
-            agregarBotonPruebaRLS();
-        }
-    }, 5000);
-    
-    // ... resto del código ...
-});
         // ==============================================
         // INICIALIZAR AL CARGAR LA PÁGINA
         // ==============================================
