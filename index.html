@@ -2045,88 +2045,65 @@
         // NUEVA FUNCIÓN: ACTUALIZAR TIMELINE DE SEGURIDAD
         // ==============================================
         function actualizarTimelineSeguridad() {
-            const timeline = document.getElementById('safety-timeline');
-            if (!timeline) return;
-            
-            timeline.innerHTML = '';
-            
-            // 1. ÚLTIMO ACCIDENTE (si existe)
-            if (accidents.length > 0) {
-                const ultimoAccidente = accidents.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
-                const diasDesdeAccidente = calcularDiasSinAccidentes();
-                
-                const accidenteItem = document.createElement('div');
-                accidenteItem.className = 'timeline-item accidente';
-                accidenteItem.innerHTML = `
-                    <div class="timeline-date">${formatDate(ultimoAccidente.fecha)}</div>
-                    <div class="timeline-content">
-                        <strong><i class="fas fa-exclamation-triangle"></i> Último accidente registrado</strong><br>
-                        <small>${ultimoAccidente.descripcion}</small><br>
-                        <small><strong>Sector:</strong> ${ultimoAccidente.sector || 'No especificado'} | <strong>Gravedad:</strong> ${ultimoAccidente.gravedad || 'No especificada'}</small>
-                    </div>
-                `;
-                timeline.appendChild(accidenteItem);
-                
-                // Actualizar también el texto en el header
-                document.getElementById('last-accident-date').textContent = formatDate(ultimoAccidente.fecha);
-            } else {
-                // Sin accidentes registrados
-                const sinAccidenteItem = document.createElement('div');
-                sinAccidenteItem.className = 'timeline-item record';
-                sinAccidenteItem.innerHTML = `
-                    <div class="timeline-date">Histórico</div>
-                    <div class="timeline-content">
-                        <strong><i class="fas fa-trophy"></i> Sin accidentes registrados</strong><br>
-                        <small>¡Excelente trabajo en seguridad! Mantén este récord.</small>
-                    </div>
-                `;
-                timeline.appendChild(sinAccidenteItem);
-                
-                document.getElementById('last-accident-date').textContent = 'Nunca';
-            }
-            
-            // 2. RECORD HISTÓRICO
-            const recordHistorico = calcularRecordHistorico();
-            const recordItem = document.createElement('div');
-            recordItem.className = 'timeline-item record';
-            recordItem.innerHTML = `
-                <div class="timeline-date">Récord</div>
-                <div class="timeline-content">
-                    <strong><i class="fas fa-award"></i> Récord histórico: ${recordHistorico} días</strong><br>
-                    <small>Máximo de días sin accidentes alcanzado</small>
-                </div>
-            `;
-            timeline.appendChild(recordItem);
-            
-            // 3. PRÓXIMA META (basada en el récord histórico)
-            const proximaMeta = Math.max(recordHistorico + 30, 100);
-            const metaItem = document.createElement('div');
-            metaItem.className = 'timeline-item meta';
-            metaItem.innerHTML = `
-                <div class="timeline-date">Próxima meta</div>
-                <div class="timeline-content">
-                    <strong><i class="fas fa-bullseye"></i> Meta: ${proximaMeta} días sin accidentes</strong><br>
-                    <small>Establecida por el comité de seguridad</small>
-                </div>
-            `;
-            timeline.appendChild(metaItem);
-            
-            // 4. INSPECCIÓN DE SEGURIDAD PROGRAMADA
-            const hoy = new Date();
-            const proximaInspeccion = new Date(hoy);
-            proximaInspeccion.setDate(proximaInspeccion.getDate() + 14);
-            
-            const inspeccionItem = document.createElement('div');
-            inspeccionItem.className = 'timeline-item';
-            inspeccionItem.innerHTML = `
-                <div class="timeline-date">${formatDate(proximaInspeccion)}</div>
-                <div class="timeline-content">
-                    <strong><i class="fas fa-clipboard-check"></i> Próxima inspección de seguridad</strong><br>
-                    <small>Revisión programada del sistema de condiciones inseguras</small>
-                </div>
-            `;
-            timeline.appendChild(inspeccionItem);
-        }
+    const timeline = document.getElementById('safety-timeline');
+    if (!timeline) return;
+    
+    timeline.innerHTML = '';
+    
+    // 1. ÚLTIMO ACCIDENTE (si existe)
+    if (accidents.length > 0) {
+        const ultimoAccidente = accidents.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
+        const diasDesdeAccidente = calcularDiasSinAccidentes();
+        
+        const accidenteItem = document.createElement('div');
+        accidenteItem.className = 'timeline-item accidente';
+        accidenteItem.innerHTML = `
+            <div class="timeline-date">${formatDate(ultimoAccidente.fecha)}</div>
+            <div class="timeline-content">
+                <strong><i class="fas fa-exclamation-triangle"></i> Último accidente registrado</strong><br>
+                <small>${ultimoAccidente.descripcion}</small><br>
+                <small><strong>Sector:</strong> ${ultimoAccidente.sector || 'No especificado'} | <strong>Gravedad:</strong> ${ultimoAccidente.gravedad || 'No especificada'}</small>
+            </div>
+        `;
+        timeline.appendChild(accidenteItem);
+        
+        // Actualizar también el texto en el header
+        document.getElementById('last-accident-date').textContent = formatDate(ultimoAccidente.fecha);
+    } else {
+        // Sin accidentes registrados
+        const sinAccidenteItem = document.createElement('div');
+        sinAccidenteItem.className = 'timeline-item record';
+        sinAccidenteItem.innerHTML = `
+            <div class="timeline-date">Histórico</div>
+            <div class="timeline-content">
+                <strong><i class="fas fa-trophy"></i> Sin accidentes registrados</strong><br>
+                <small>¡Excelente trabajo en seguridad! Mantén este récord.</small>
+            </div>
+        `;
+        timeline.appendChild(sinAccidenteItem);
+        
+        document.getElementById('last-accident-date').textContent = 'Nunca';
+    }
+    
+    // 2. RECORD HISTÓRICO
+    const recordHistorico = calcularRecordHistorico();
+    const recordItem = document.createElement('div');
+    recordItem.className = 'timeline-item record';
+    recordItem.innerHTML = `
+        <div class="timeline-date">Récord</div>
+        <div class="timeline-content">
+            <strong><i class="fas fa-award"></i> Récord histórico: ${recordHistorico} días</strong><br>
+            <small>Máximo de días sin accidentes alcanzado</small>
+        </div>
+    `;
+    timeline.appendChild(recordItem);
+    
+    // ELIMINADAS LAS SIGUIENTES DOS SECCIONES:
+    // 3. PRÓXIMA META - ELIMINADA
+    // 4. INSPECCIÓN DE SEGURIDAD PROGRAMADA - ELIMINADA
+    
+    // Si quieres mantener solo el último accidente y el récord, la función termina aquí
+}
         
         // ==============================================
         // FUNCIONES PARA MANEJO DE IMÁGENES
