@@ -707,7 +707,7 @@
             background: rgba(231, 76, 60, 0.9);
             color: white;
             border: none;
-            border-radius: 50%;
+                    border-radius: 50%;
             width: 24px;
             height: 24px;
             cursor: pointer;
@@ -948,6 +948,22 @@
             box-shadow: 0 0 0 2px var(--primary);
         }
 
+        .timeline-item.accidente::before {
+            background: var(--danger);
+            box-shadow: 0 0 0 2px var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        .timeline-item.record::before {
+            background: var(--safe);
+            box-shadow: 0 0 0 2px var(--safe);
+        }
+
+        .timeline-item.meta::before {
+            background: var(--warning);
+            box-shadow: 0 0 0 2px var(--warning);
+        }
+
         .timeline-date {
             font-size: 12px;
             color: #7f8c8d;
@@ -961,30 +977,72 @@
             border-left: 3px solid var(--primary);
         }
 
+        .timeline-item.accidente .timeline-content {
+            border-left-color: var(--danger);
+        }
+
+        .timeline-item.record .timeline-content {
+            border-left-color: var(--safe);
+        }
+
+        .timeline-item.meta .timeline-content {
+            border-left-color: var(--warning);
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
         /* ===== ACCIDENT FREE DAYS ===== */
         .accident-free {
-            background: linear-gradient(135deg, #27ae60 0%, #219653 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-            margin: 20px 0;
-        }
+    background: linear-gradient(135deg, #27ae60 0%, #219653 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    margin: 20px 0;
+}
 
-        .accident-free-days {
-            font-size: 48px;
-            font-weight: 900;
-            margin: 10px 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
+/* ESTILOS ESPECÍFICOS PARA EL CONTENIDO DENTRO DE ACCIDENT-FREE */
+.accident-free .timeline {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
 
-        .accident-free-label {
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.9;
-        }
+.accident-free .timeline-date {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.accident-free .timeline-content {
+    background: #ffffff;
+    color: #2c3e50;
+    border-left: 3px solid #27ae60;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.accident-free .timeline-item.accidente .timeline-content {
+    border-left-color: #e74c3c;
+}
+
+.accident-free .timeline-item.record .timeline-content {
+    border-left-color: #27ae60;
+}
+
+.accident-free .timeline-item.meta .timeline-content {
+    border-left-color: #f39c12;
+}
+
+.accident-free .timeline-legend {
+    background: rgba(255, 255, 255, 0.9);
+    color: #2c3e50;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
 
         /* ===== PHOTO COMPARISON ===== */
         .photo-comparison {
@@ -1028,6 +1086,55 @@
             .photo-comparison {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /* ===== LEYENDA TIMELINE ===== */
+        .timeline-legend {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .legend-items {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .legend-dot.accidente {
+            background: var(--danger);
+            box-shadow: 0 0 0 2px var(--danger);
+        }
+
+        .legend-dot.record {
+            background: var(--safe);
+            box-shadow: 0 0 0 2px var(--safe);
+        }
+
+        .legend-dot.meta {
+            background: var(--warning);
+            box-shadow: 0 0 0 2px var(--warning);
+        }
+
+        .legend-dot.evento {
+            background: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary);
         }
     </style>
 </head>
@@ -1158,14 +1265,29 @@
                             <div class="accident-free-days" id="dashboard-accident-days">0</div>
                             <div class="accident-free-label">Días consecutivos sin accidentes</div>
                             <div style="margin-top: 15px;">
-                                <div class="timeline">
-                                    <div class="timeline-item">
-                                        <div class="timeline-date">Último accidente</div>
-                                        <div class="timeline-content" id="last-accident-info">No se han registrado accidentes</div>
-                                    </div>
-                                    <div class="timeline-item">
-                                        <div class="timeline-date">Record histórico</div>
-                                        <div class="timeline-content">120 días sin accidentes</div>
+                                <div class="timeline" id="safety-timeline">
+                                    <!-- Los datos se cargarán aquí dinámicamente -->
+                                </div>
+                                
+                                <!-- Leyenda de la línea de tiempo -->
+                                <div class="timeline-legend">
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <div class="legend-dot accidente"></div>
+                                            <span>Accidente</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-dot record"></div>
+                                            <span>Record histórico</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-dot meta"></div>
+                                            <span>Meta de seguridad</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <div class="legend-dot evento"></div>
+                                            <span>Evento importante</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1408,7 +1530,6 @@
                                     <option value="Aceites">Aceites</option>
                                     <option value="Jaboneria">Jaboneria</option>
                                     <option value="Fraccionamiento">Fraccionamiento</option>
-                                    
                                 </select>
                                 
                                 <select class="form-control" id="filter-risk-level" style="width: 150px;">
@@ -1891,6 +2012,123 @@
         }
         
         // ==============================================
+        // NUEVA FUNCIÓN: CALCULAR RECORD HISTÓRICO
+        // ==============================================
+        function calcularRecordHistorico() {
+            if (accidents.length === 0) {
+                const recordGuardado = localStorage.getItem('record_historico_accidentes');
+                return recordGuardado ? parseInt(recordGuardado) : 365;
+            }
+            
+            const accidentesOrdenados = [...accidents].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            let maxDias = 0;
+            
+            for (let i = 0; i < accidentesOrdenados.length - 1; i++) {
+                const fecha1 = new Date(accidentesOrdenados[i].fecha);
+                const fecha2 = new Date(accidentesOrdenados[i + 1].fecha);
+                const diferenciaDias = Math.floor((fecha2 - fecha1) / (1000 * 60 * 60 * 24));
+                maxDias = Math.max(maxDias, diferenciaDias);
+            }
+            
+            // Desde el último accidente hasta hoy
+            const ultimoAccidente = new Date(accidentesOrdenados[accidentesOrdenados.length - 1].fecha);
+            const hoy = new Date();
+            const diasDesdeUltimo = Math.floor((hoy - ultimoAccidente) / (1000 * 60 * 60 * 24));
+            
+            const recordFinal = Math.max(maxDias, diasDesdeUltimo);
+            localStorage.setItem('record_historico_accidentes', recordFinal);
+            
+            return recordFinal;
+        }
+        
+        // ==============================================
+        // NUEVA FUNCIÓN: ACTUALIZAR TIMELINE DE SEGURIDAD
+        // ==============================================
+        function actualizarTimelineSeguridad() {
+            const timeline = document.getElementById('safety-timeline');
+            if (!timeline) return;
+            
+            timeline.innerHTML = '';
+            
+            // 1. ÚLTIMO ACCIDENTE (si existe)
+            if (accidents.length > 0) {
+                const ultimoAccidente = accidents.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
+                const diasDesdeAccidente = calcularDiasSinAccidentes();
+                
+                const accidenteItem = document.createElement('div');
+                accidenteItem.className = 'timeline-item accidente';
+                accidenteItem.innerHTML = `
+                    <div class="timeline-date">${formatDate(ultimoAccidente.fecha)}</div>
+                    <div class="timeline-content">
+                        <strong><i class="fas fa-exclamation-triangle"></i> Último accidente registrado</strong><br>
+                        <small>${ultimoAccidente.descripcion}</small><br>
+                        <small><strong>Sector:</strong> ${ultimoAccidente.sector || 'No especificado'} | <strong>Gravedad:</strong> ${ultimoAccidente.gravedad || 'No especificada'}</small>
+                    </div>
+                `;
+                timeline.appendChild(accidenteItem);
+                
+                // Actualizar también el texto en el header
+                document.getElementById('last-accident-date').textContent = formatDate(ultimoAccidente.fecha);
+            } else {
+                // Sin accidentes registrados
+                const sinAccidenteItem = document.createElement('div');
+                sinAccidenteItem.className = 'timeline-item record';
+                sinAccidenteItem.innerHTML = `
+                    <div class="timeline-date">Histórico</div>
+                    <div class="timeline-content">
+                        <strong><i class="fas fa-trophy"></i> Sin accidentes registrados</strong><br>
+                        <small>¡Excelente trabajo en seguridad! Mantén este récord.</small>
+                    </div>
+                `;
+                timeline.appendChild(sinAccidenteItem);
+                
+                document.getElementById('last-accident-date').textContent = 'Nunca';
+            }
+            
+            // 2. RECORD HISTÓRICO
+            const recordHistorico = calcularRecordHistorico();
+            const recordItem = document.createElement('div');
+            recordItem.className = 'timeline-item record';
+            recordItem.innerHTML = `
+                <div class="timeline-date">Récord</div>
+                <div class="timeline-content">
+                    <strong><i class="fas fa-award"></i> Récord histórico: ${recordHistorico} días</strong><br>
+                    <small>Máximo de días sin accidentes alcanzado</small>
+                </div>
+            `;
+            timeline.appendChild(recordItem);
+            
+            // 3. PRÓXIMA META (basada en el récord histórico)
+            const proximaMeta = Math.max(recordHistorico + 30, 100);
+            const metaItem = document.createElement('div');
+            metaItem.className = 'timeline-item meta';
+            metaItem.innerHTML = `
+                <div class="timeline-date">Próxima meta</div>
+                <div class="timeline-content">
+                    <strong><i class="fas fa-bullseye"></i> Meta: ${proximaMeta} días sin accidentes</strong><br>
+                    <small>Establecida por el comité de seguridad</small>
+                </div>
+            `;
+            timeline.appendChild(metaItem);
+            
+            // 4. INSPECCIÓN DE SEGURIDAD PROGRAMADA
+            const hoy = new Date();
+            const proximaInspeccion = new Date(hoy);
+            proximaInspeccion.setDate(proximaInspeccion.getDate() + 14);
+            
+            const inspeccionItem = document.createElement('div');
+            inspeccionItem.className = 'timeline-item';
+            inspeccionItem.innerHTML = `
+                <div class="timeline-date">${formatDate(proximaInspeccion)}</div>
+                <div class="timeline-content">
+                    <strong><i class="fas fa-clipboard-check"></i> Próxima inspección de seguridad</strong><br>
+                    <small>Revisión programada del sistema de condiciones inseguras</small>
+                </div>
+            `;
+            timeline.appendChild(inspeccionItem);
+        }
+        
+        // ==============================================
         // FUNCIONES PARA MANEJO DE IMÁGENES
         // ==============================================
         function previewImages(event) {
@@ -2075,6 +2313,7 @@
                 actualizarDiasSinAccidentes();
                 cargarActividadesRecientes();
                 actualizarGraficoEvolucion();
+                actualizarTimelineSeguridad(); // NUEVA FUNCIÓN
             } catch (error) {
                 console.error('Error cargando dashboard:', error);
             }
@@ -2106,11 +2345,8 @@
             document.getElementById('accident-free-days').textContent = diasSinAccidentes;
             document.getElementById('dashboard-accident-days').textContent = diasSinAccidentes;
             
-            if (accidents.length > 0) {
-                const ultimoAccidente = accidents.sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
-                document.getElementById('last-accident-date').textContent = formatDate(ultimoAccidente.fecha);
-                document.getElementById('last-accident-info').textContent = `${ultimoAccidente.descripcion} (${formatDate(ultimoAccidente.fecha)})`;
-            }
+            // Actualizar timeline con la nueva función
+            actualizarTimelineSeguridad();
         }
         
         function cargarActividadesRecientes() {
@@ -2154,224 +2390,224 @@
         }
         
         function actualizarGraficoEvolucion() {
-    const ctx = document.getElementById('evolution-chart');
-    if (!ctx) return;
-    
-    if (evolutionChart) {
-        evolutionChart.destroy();
-    }
-    
-    const periodo = document.getElementById('time-period').value;
-    let dias = 30;
-    if (periodo === '7d') dias = 7;
-    if (periodo === '90d') dias = 90;
-    if (periodo === '180d') dias = 180;
-    if (periodo === '1y') dias = 365;
-    
-    const hoy = new Date();
-    const fechas = [];
-    const datosNuevosReportes = []; // Cambiado de datosPendientes
-    const datosReparados = [];
-    
-    // Crear array de fechas
-    for (let i = dias - 1; i >= 0; i--) {
-        const fecha = new Date(hoy);
-        fecha.setDate(fecha.getDate() - i);
-        const fechaStr = fecha.toISOString().split('T')[0];
-        
-        // Formatear para mostrar en el gráfico
-        if (dias <= 30) {
-            // Para períodos cortos, mostrar día-mes
-            fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
-        } else if (dias <= 90) {
-            // Para períodos medianos, mostrar día cada 3 días
-            if (i % 3 === 0) {
-                fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
-            } else {
-                fechas.push('');
+            const ctx = document.getElementById('evolution-chart');
+            if (!ctx) return;
+            
+            if (evolutionChart) {
+                evolutionChart.destroy();
             }
-        } else {
-            // Para períodos largos, mostrar semana
-            if (i % 7 === 0) {
-                fechas.push(`Sem ${Math.floor(i/7)}`);
-            } else {
-                fechas.push('');
-            }
-        }
-        
-        // Contar NUEVOS reportes creados en esta fecha (sin importar estado)
-        const nuevosReportes = reports.filter(r => {
-            if (!r.fecha_reporte) return false;
-            const reporteFecha = new Date(r.fecha_reporte);
-            const reporteFechaStr = reporteFecha.toISOString().split('T')[0];
-            return reporteFechaStr === fechaStr;
-        }).length;
-        
-        datosNuevosReportes.push(nuevosReportes);
-        
-        // Contar reportes REPARADOS en esta fecha
-        const reparados = reports.filter(r => {
-            if (r.estado !== 'Reparado' || !r.fecha_reparacion) return false;
-            const reparacionFecha = new Date(r.fecha_reparacion);
-            const reparacionFechaStr = reparacionFecha.toISOString().split('T')[0];
-            return reparacionFechaStr === fechaStr;
-        }).length;
-        
-        datosReparados.push(reparados);
-    }
-    
-    // Para períodos largos, filtrar fechas vacías
-    let labelsFinal = fechas;
-    let nuevosFinal = datosNuevosReportes;
-    let reparadosFinal = datosReparados;
-    
-    if (dias > 30) {
-        // Filtrar solo las fechas no vacías
-        labelsFinal = [];
-        nuevosFinal = [];
-        reparadosFinal = [];
-        
-        for (let i = 0; i < fechas.length; i++) {
-            if (fechas[i] !== '') {
-                labelsFinal.push(fechas[i]);
-                nuevosFinal.push(datosNuevosReportes[i]);
-                reparadosFinal.push(datosReparados[i]);
-            }
-        }
-    }
-    
-    evolutionChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labelsFinal,
-            datasets: [
-                {
-                    label: 'Nuevos Reportes',
-                    data: nuevosFinal,
-                    borderColor: '#e74c3c',
-                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                },
-                {
-                    label: 'Reparados',
-                    data: reparadosFinal,
-                    borderColor: '#27ae60',
-                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: '#2c3e50',
-                        font: {
-                            size: 12,
-                            weight: 'bold'
-                        },
-                        padding: 20
+            
+            const periodo = document.getElementById('time-period').value;
+            let dias = 30;
+            if (periodo === '7d') dias = 7;
+            if (periodo === '90d') dias = 90;
+            if (periodo === '180d') dias = 180;
+            if (periodo === '1y') dias = 365;
+            
+            const hoy = new Date();
+            const fechas = [];
+            const datosNuevosReportes = [];
+            const datosReparados = [];
+            
+            // Crear array de fechas
+            for (let i = dias - 1; i >= 0; i--) {
+                const fecha = new Date(hoy);
+                fecha.setDate(fecha.getDate() - i);
+                const fechaStr = fecha.toISOString().split('T')[0];
+                
+                // Formatear para mostrar en el gráfico
+                if (dias <= 30) {
+                    // Para períodos cortos, mostrar día-mes
+                    fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
+                } else if (dias <= 90) {
+                    // Para períodos medianos, mostrar día cada 3 días
+                    if (i % 3 === 0) {
+                        fechas.push(fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
+                    } else {
+                        fechas.push('');
                     }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: 'rgba(44, 62, 80, 0.9)',
-                    titleColor: 'white',
-                    bodyColor: 'white',
-                    borderColor: '#2c3e50',
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += context.parsed.y + ' reporte' + (context.parsed.y !== 1 ? 's' : '');
-                            return label;
+                } else {
+                    // Para períodos largos, mostrar semana
+                    if (i % 7 === 0) {
+                        fechas.push(`Sem ${Math.floor(i/7)}`);
+                    } else {
+                        fechas.push('');
+                    }
+                }
+                
+                // Contar NUEVOS reportes creados en esta fecha
+                const nuevosReportes = reports.filter(r => {
+                    if (!r.fecha_reporte) return false;
+                    const reporteFecha = new Date(r.fecha_reporte);
+                    const reporteFechaStr = reporteFecha.toISOString().split('T')[0];
+                    return reporteFechaStr === fechaStr;
+                }).length;
+                
+                datosNuevosReportes.push(nuevosReportes);
+                
+                // Contar reportes REPARADOS en esta fecha
+                const reparados = reports.filter(r => {
+                    if (r.estado !== 'Reparado' || !r.fecha_reparacion) return false;
+                    const reparacionFecha = new Date(r.fecha_reparacion);
+                    const reparacionFechaStr = reparacionFecha.toISOString().split('T')[0];
+                    return reparacionFechaStr === fechaStr;
+                }).length;
+                
+                datosReparados.push(reparados);
+            }
+            
+            // Para períodos largos, filtrar fechas vacías
+            let labelsFinal = fechas;
+            let nuevosFinal = datosNuevosReportes;
+            let reparadosFinal = datosReparados;
+            
+            if (dias > 30) {
+                // Filtrar solo las fechas no vacías
+                labelsFinal = [];
+                nuevosFinal = [];
+                reparadosFinal = [];
+                
+                for (let i = 0; i < fechas.length; i++) {
+                    if (fechas[i] !== '') {
+                        labelsFinal.push(fechas[i]);
+                        nuevosFinal.push(datosNuevosReportes[i]);
+                        reparadosFinal.push(datosReparados[i]);
+                    }
+                }
+            }
+            
+            evolutionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsFinal,
+                    datasets: [
+                        {
+                            label: 'Nuevos Reportes',
+                            data: nuevosFinal,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Reparados',
+                            data: reparadosFinal,
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
                         }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#7f8c8d',
-                        font: {
-                            size: 11
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#2c3e50',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                padding: 20
+                            }
                         },
-                        callback: function(value) {
-                            if (value % 1 === 0) {
-                                return value;
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: '#2c3e50',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += context.parsed.y + ' reporte' + (context.parsed.y !== 1 ? 's' : '');
+                                    return label;
+                                }
                             }
                         }
                     },
-                    title: {
-                        display: true,
-                        text: 'Cantidad de Reportes',
-                        color: '#2c3e50',
-                        font: {
-                            size: 12,
-                            weight: 'bold'
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#2c3e50',
-                        font: {
-                            size: 11
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#7f8c8d',
+                                font: {
+                                    size: 11
+                                },
+                                callback: function(value) {
+                                    if (value % 1 === 0) {
+                                        return value;
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Cantidad de Reportes',
+                                color: '#2c3e50',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
                         },
-                        maxRotation: 45
-                    },
-                    title: {
-                        display: true,
-                        text: 'Período de Tiempo',
-                        color: '#2c3e50',
-                        font: {
-                            size: 12,
-                            weight: 'bold'
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#2c3e50',
+                                font: {
+                                    size: 11
+                                },
+                                maxRotation: 45
+                            },
+                            title: {
+                                display: true,
+                                text: 'Período de Tiempo',
+                                color: '#2c3e50',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
                         }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'nearest'
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
                     }
                 }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'nearest'
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeOutQuart'
-            }
+            });
+            
+            // También actualizamos el gráfico cuando se cambia el período
+            document.getElementById('time-period').addEventListener('change', function() {
+                actualizarGraficoEvolucion();
+                mostrarNotificacion('✅ Gráfico de evolución actualizado', 'success');
+            });
         }
-    });
-    
-    // También actualizamos el gráfico cuando se cambia el período
-    document.getElementById('time-period').addEventListener('change', function() {
-        actualizarGraficoEvolucion();
-        mostrarNotificacion('✅ Gráfico de evolución actualizado', 'success');
-    });
-}
         
         // ==============================================
         // FUNCIONES PARA NUEVO REPORTE
@@ -3455,6 +3691,7 @@
                     sincronizarDatos();
                 } else {
                     actualizarEstadisticasDashboard();
+                    actualizarTimelineSeguridad(); // ACTUALIZAR TIMELINE TAMBIÉN
                     
                     if (document.getElementById('dashboard-page').classList.contains('active')) {
                         cargarActividadesRecientes();
@@ -3497,6 +3734,7 @@
                 
                 alert('⚠️ Accidente registrado. Se reiniciará el contador de días sin accidentes.');
                 actualizarDiasSinAccidentes();
+                actualizarTimelineSeguridad(); // ACTUALIZAR TIMELINE
                 
             } catch (error) {
                 console.error('Error guardando accidente:', error);
@@ -3635,6 +3873,7 @@
                 console.log(`✅ Sincronización completada: ${reports.length} reportes, ${accidents.length} accidentes`);
                 
                 actualizarEstadisticasDashboard();
+                actualizarTimelineSeguridad(); // ACTUALIZAR TIMELINE DESPUÉS DE SINCRONIZAR
                 
                 if (document.getElementById('dashboard-page').classList.contains('active')) {
                     cargarDashboard();
