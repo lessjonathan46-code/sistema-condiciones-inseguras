@@ -2244,6 +2244,160 @@
         }
         
         // ==============================================
+        // NUEVA FUNCIÓN: EDITAR FOTO DEL HISTORIAL
+        // ==============================================
+        async function editarFotoHistorial(ot) {
+            const reporte = reports.find(r => r.ot === ot);
+            if (!reporte) return;
+            
+            const modalContent = document.getElementById('modal-content');
+            modalContent.innerHTML = `
+                <h3 style="margin-bottom: 20px;"><i class="fas fa-edit"></i> Editar Foto para ${ot}</h3>
+                
+                <div class="form-group">
+                    <label>Foto actual:</label>
+                    ${reporte.fotos_antes && reporte.fotos_antes.length > 0 ? 
+                        `<img src="${reporte.fotos_antes[0]}" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 6px; margin-bottom: 15px;">` : 
+                        '<p style="color: #95a5a6; text-align: center;">No hay foto actual</p>'}
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Subir nueva foto</label>
+                    <p style="color: #7f8c8d; font-size: 12px; margin-bottom: 10px;">Selecciona una nueva foto para reemplazar la actual</p>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button type="button" class="btn btn-warning" onclick="tomarFotoEdicion('${ot}')">
+                            <i class="fas fa-camera"></i> Tomar Foto
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="abrirGaleriaEdicion('${ot}')">
+                            <i class="fas fa-images"></i> Seleccionar de Galería
+                        </button>
+                    </div>
+                    
+                    <input type="file" id="edit-photo-input" accept="image/*" capture="environment" 
+                           style="display: none;" onchange="previewEditImage(event, '${ot}')">
+                    
+                    <div class="image-preview" id="edit-image-preview">
+                        <!-- Vista previa de la nueva imagen -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-success" onclick="confirmarEdicionFoto('${ot}')">
+                        <i class="fas fa-save"></i> Guardar Foto
+                    </button>
+                    <button class="btn btn-secondary" onclick="cerrarModal()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('conditionModal').style.display = 'flex';
+        }
+        
+        function tomarFotoEdicion(ot) {
+            document.getElementById('edit-photo-input').click();
+        }
+        
+        function abrirGaleriaEdicion(ot) {
+            document.getElementById('edit-photo-input').click();
+        }
+        
+        function previewEditImage(event, ot) {
+            const preview = document.getElementById('edit-image-preview');
+            preview.innerHTML = '';
+            
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'image-preview-item';
+                imgContainer.innerHTML = `
+                    <img src="${e.target.result}" alt="Nueva foto">
+                    <button class="remove-image" onclick="removerImagenEdicion(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                preview.appendChild(imgContainer);
+                preview.setAttribute('data-file', JSON.stringify({
+                    name: file.name,
+                    type: file.type,
+                    data: e.target.result.split(',')[1]
+                }));
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        function removerImagenEdicion(button) {
+            const container = button.parentElement;
+            container.parentElement.removeAttribute('data-file');
+            container.remove();
+        }
+        
+        async function confirmarEdicionFoto(ot) {
+            const preview = document.getElementById('edit-image-preview');
+            const imgContainer = preview.querySelector('.image-preview-item');
+            
+            if (!imgContainer) {
+                alert('❌ Por favor selecciona una foto');
+                return;
+            }
+            
+            showLoading(true, 'Subiendo nueva foto...');
+            
+            try {
+                // Obtener el archivo de la vista previa
+                const img = imgContainer.querySelector('img');
+                const response = await fetch(img.src);
+                const blob = await response.blob();
+                const file = new File([blob], `foto_${ot}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                
+                // Subir la nueva foto
+                const result = await subirFotoASupabase(file, ot, 'antes');
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                // Actualizar el reporte con la nueva URL de foto
+                const nuevasFotos = [result.url];
+                
+                const { error } = await supabaseClient
+                    .from('condiciones_inseguras')
+                    .update({ fotos_antes: nuevasFotos })
+                    .eq('ot', ot);
+                
+                if (error) throw error;
+                
+                // Actualizar en memoria local
+                const reporte = reports.find(r => r.ot === ot);
+                if (reporte) {
+                    reporte.fotos_antes = nuevasFotos;
+                }
+                
+                guardarDatosLocales();
+                
+                cerrarModal();
+                alert(`✅ Foto actualizada para ${ot}`);
+                
+                // Recargar el historial si estamos en esa página
+                if (document.getElementById('historial-page').classList.contains('active')) {
+                    cargarHistorial();
+                }
+                
+            } catch (error) {
+                console.error('Error actualizando foto:', error);
+                alert('❌ Error al actualizar la foto: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // ==============================================
         // FUNCIONES DE NAVEGACIÓN
         // ==============================================
         function cambiarPagina(pagina) {
@@ -2716,6 +2870,16 @@
                                 `<span style="position: absolute; top: -5px; right: -5px; background: #3498db; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; display: flex; align-items: center; justify-content: center;">
                                     +${reporte.fotos_antes.length - 1}
                                 </span>` : ''}
+                        </div>
+                    `;
+                } else {
+                    // AÑADIR BOTÓN DE EDICIÓN CUANDO NO HAY FOTO
+                    fotoAntesHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <i class="fas fa-times" style="color: #95a5a6;"></i>
+                            <button class="action-btn btn-warning" onclick="editarFotoHistorial('${reporte.ot}')" title="Agregar foto">
+                                <i class="fas fa-camera"></i> Agregar
+                            </button>
                         </div>
                     `;
                 }
